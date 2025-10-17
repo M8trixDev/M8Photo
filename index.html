@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="M8Photo offline-capable workspace shell" />
+    <meta name="theme-color" content="#1e1e1e" />
+    <title>M8Photo Studio</title>
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/assets/icons/favicon-64.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/assets/icons/icon-192.png" />
+    <link rel="stylesheet" href="/styles/theme.css" />
+    <link rel="stylesheet" href="/styles/layout.css" />
+    <link rel="stylesheet" href="/styles/components.css" />
+  </head>
+  <body class="app-shell">
+    <noscript class="noscript-banner">JavaScript is required to load the interactive workspace.</noscript>
+    <div class="app-root" data-app-shell>
+      <header class="toolbar" data-toolbar aria-label="M8Photo main toolbar"></header>
+      <div class="app-main">
+        <section class="workspace" aria-labelledby="workspace-title">
+          <div class="workspace-stage">
+            <canvas
+              id="workspace-canvas"
+              class="workspace-canvas"
+              width="1280"
+              height="720"
+              role="img"
+              aria-labelledby="workspace-title"
+            ></canvas>
+            <div class="workspace-placeholder" id="workspace-title">
+              <h1>M8Photo Studio</h1>
+              <p>Precision editing with a calm grayscale aesthetic.</p>
+            </div>
+          </div>
+        </section>
+        <aside class="panels" data-panels aria-label="Workspace panels"></aside>
+      </div>
+    </div>
+    <script type="module" src="/scripts/main.js"></script>
+  </body>
+</html>
