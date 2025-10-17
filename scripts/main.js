@@ -1,5 +1,78 @@
+import { store } from "../modules/core/store.js";
+import { history } from "../modules/core/history.js";
+import { eventBus } from "../modules/core/events.js";
 import { initToolbar } from "./toolbar.js";
 import { initPanels } from "./panels.js";
+
+const globalScope = typeof window !== "undefined" ? window : globalThis;
+let coreExposed = false;
+
+function exposeCoreModules() {
+  if (coreExposed && globalScope.M8PhotoCore) {
+    return globalScope.M8PhotoCore;
+  }
+
+  const commands = Object.freeze({
+    execute: history.execute,
+    undo: history.undo,
+    redo: history.redo,
+    clear: history.clear,
+    register: history.registerCommand,
+    configure: history.configure,
+    canUndo: history.canUndo,
+    canRedo: history.canRedo,
+  });
+
+  const core = {
+    store,
+    history,
+    events: eventBus,
+    commands,
+  };
+
+  globalScope.M8PhotoCore = core;
+  coreExposed = true;
+
+  return core;
+}
+
+function shouldRunDevHarness() {
+  try {
+    const search = globalScope.location?.search || "";
+
+    if (!search) {
+      return false;
+    }
+
+    const params = new URLSearchParams(search);
+    const value = params.get("devHarness");
+
+    if (value === null) {
+      return false;
+    }
+
+    return ["1", "true", "yes", "on"].includes(value.toLowerCase());
+  } catch (error) {
+    console.warn("Unable to evaluate dev harness flag", error);
+    return false;
+  }
+}
+
+function bootstrapDevHarness() {
+  if (!shouldRunDevHarness()) {
+    return;
+  }
+
+  import("../modules/dev/harness.js")
+    .then((module) => {
+      if (module && typeof module.runHarness === "function") {
+        module.runHarness({ store, history, eventBus });
+      }
+    })
+    .catch((error) => {
+      console.error("Failed to initialise development harness", error);
+    });
+}
 
 function bootAppShell() {
   const shellRoot = document.querySelector("[data-app-shell]");
@@ -47,6 +120,9 @@ async function registerServiceWorker() {
     console.warn("Service worker registration failed", error);
   }
 }
+
+exposeCoreModules();
+bootstrapDevHarness();
 
 document.addEventListener("DOMContentLoaded", () => {
   bootAppShell();
