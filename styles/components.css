@@ -261,6 +261,177 @@
   gap: 0.4rem;
 }
 
+.properties-panel {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.properties-panel__toolbar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: 0.5rem;
+}
+
+.properties-tool {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: center;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-tight);
+  background: var(--color-surface-highlight);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  transition: background var(--transition-snappy), transform var(--transition-snappy), color var(--transition-snappy), border var(--transition-snappy);
+}
+
+.properties-tool:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text-primary);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.properties-tool.is-active {
+  background: var(--color-accent-soft);
+  color: var(--color-text-primary);
+  border-color: rgba(255, 255, 255, 0.24);
+  box-shadow: var(--shadow-subtle);
+}
+
+.properties-tool__icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.properties-tool__label {
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.properties-section {
+  display: grid;
+  gap: 1rem;
+}
+
+.properties-section__title {
+  margin: 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.properties-section__hint {
+  margin: 0;
+  padding: 0.75rem;
+  border-radius: var(--radius-tight);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.properties-field {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.properties-field--toggle {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius-tight);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-highlight);
+  color: var(--color-text-secondary);
+  transition: border var(--transition-snappy), background var(--transition-snappy), color var(--transition-snappy);
+}
+
+.properties-field--toggle:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  color: var(--color-text-primary);
+}
+
+.properties-field--toggle input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+
+.properties-field--range {
+  padding: 0.75rem;
+  border-radius: var(--radius-tight);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-highlight);
+  gap: 0.75rem;
+}
+
+.properties-field__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.properties-field__header output {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+}
+
+.properties-field input[type="range"] {
+  width: 100%;
+  appearance: none;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--color-border-soft);
+  outline: none;
+  cursor: pointer;
+}
+
+.properties-field input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.12);
+  border: none;
+  transition: transform var(--transition-snappy), box-shadow var(--transition-snappy);
+}
+
+.properties-field input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  border: none;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.12);
+  transition: transform var(--transition-snappy), box-shadow var(--transition-snappy);
+}
+
+.properties-field input[type="range"]::-webkit-slider-thumb:hover,
+.properties-field input[type="range"]::-moz-range-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.16);
+}
+
+.properties-field input[type="range"]::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0));
+}
+
+.properties-field input[type="range"]::-moz-range-track {
+  height: 5px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0));
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

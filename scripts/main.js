@@ -3,6 +3,7 @@ import { history } from "../modules/core/history.js";
 import { eventBus } from "../modules/core/events.js";
 import { initToolbar } from "./toolbar.js";
 import { initPanels } from "./panels.js";
+import { initTools } from "../modules/tools/index.js";
 
 const globalScope = typeof window !== "undefined" ? window : globalThis;
 let coreExposed = false;
@@ -23,11 +24,14 @@ function exposeCoreModules() {
     canRedo: history.canRedo,
   });
 
+  const toolsApi = initTools();
+
   const core = {
     store,
     history,
     events: eventBus,
     commands,
+    tools: toolsApi,
   };
 
   globalScope.M8PhotoCore = core;
@@ -66,7 +70,7 @@ function bootstrapDevHarness() {
   import("../modules/dev/harness.js")
     .then((module) => {
       if (module && typeof module.runHarness === "function") {
-        module.runHarness({ store, history, eventBus });
+        module.runHarness({ store, history, eventBus, tools: initTools() });
       }
     })
     .catch((error) => {
@@ -80,9 +84,25 @@ function bootAppShell() {
     return;
   }
 
+  const toolsApi = initTools();
+
   initToolbar(shellRoot);
   initPanels(shellRoot);
   initialiseCollapsibles(shellRoot);
+
+  const activeTool = store.getState().tools?.active || "pointer";
+  toolsApi.setActive(activeTool, { source: "bootstrap", force: true });
+
+  shellRoot.dataset.activeTool = activeTool;
+
+  eventBus.on("tools:change", (event) => {
+    if (!event || !event.detail) {
+      return;
+    }
+    const { tool: nextTool } = event.detail;
+    shellRoot.dataset.activeTool = nextTool || "pointer";
+  });
+
   shellRoot.classList.add("is-initialised");
 }
 

@@ -61,6 +61,227 @@ function mergeDeep(target, source) {
   return output;
 }
 
+const DEFAULT_LAYER_DEFINITIONS = [
+  {
+    id: "layer-hero",
+    name: "Hero Retouch",
+    type: "raster",
+    locked: false,
+    visible: true,
+    opacity: 1,
+    blendingMode: "normal",
+    transform: { x: 160, y: 120, rotation: 0, scaleX: 1, scaleY: 1 },
+    dimensions: { width: 960, height: 540 },
+    strokes: [],
+  },
+  {
+    id: "layer-gradient",
+    name: "Gradient Overlay",
+    type: "adjustment",
+    locked: false,
+    visible: true,
+    opacity: 0.82,
+    blendingMode: "screen",
+    transform: { x: 120, y: 72, rotation: 0, scaleX: 1, scaleY: 1 },
+    dimensions: { width: 960, height: 540 },
+    strokes: [],
+  },
+  {
+    id: "layer-backdrop",
+    name: "Backdrop Blur",
+    type: "effect",
+    locked: true,
+    visible: true,
+    opacity: 1,
+    blendingMode: "normal",
+    transform: { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 },
+    dimensions: { width: 1280, height: 720 },
+    strokes: [],
+  },
+];
+
+const LAYER_BOUNDS_EPSILON = 0.0001;
+
+function buildDefaultLayerState() {
+  const order = [];
+  const entities = {};
+  const stats = { count: 0, visible: 0 };
+
+  DEFAULT_LAYER_DEFINITIONS.forEach((definition) => {
+    const id = String(definition.id);
+    const entity = {
+      id,
+      name: definition.name || "Layer",
+      type: definition.type || "raster",
+      locked: Boolean(definition.locked),
+      visible: definition.visible !== false,
+      opacity: clampUnit(definition.opacity ?? 1),
+      blendingMode: definition.blendingMode || "normal",
+      transform: {
+        x: typeof definition.transform?.x === "number" ? definition.transform.x : 0,
+        y: typeof definition.transform?.y === "number" ? definition.transform.y : 0,
+        rotation: typeof definition.transform?.rotation === "number" ? definition.transform.rotation : 0,
+        scaleX: typeof definition.transform?.scaleX === "number" ? definition.transform.scaleX : 1,
+        scaleY: typeof definition.transform?.scaleY === "number" ? definition.transform.scaleY : 1,
+      },
+      dimensions: {
+        width: typeof definition.dimensions?.width === "number" ? definition.dimensions.width : 512,
+        height: typeof definition.dimensions?.height === "number" ? definition.dimensions.height : 512,
+      },
+      strokes: Array.isArray(definition.strokes) ? definition.strokes.slice() : [],
+      metadata: { ...(definition.metadata || {}) },
+      createdAt: definition.createdAt ?? null,
+      updatedAt: definition.updatedAt ?? null,
+    };
+
+    order.push(id);
+    entities[id] = entity;
+    stats.count += 1;
+    if (entity.visible) {
+      stats.visible += 1;
+    }
+  });
+
+  return {
+    order,
+    entities,
+    stats,
+    active: order[0] || null,
+  };
+}
+
+function calculateBoundsForLayerIds(entities, layerIds) {
+  if (!Array.isArray(layerIds) || layerIds.length === 0) {
+    return null;
+  }
+
+  const bounds = layerIds
+    .map((id) => entities[id])
+    .filter(Boolean)
+    .map((layer) => computeEntityBounds(layer))
+    .filter(Boolean);
+
+  if (!bounds.length) {
+    return null;
+  }
+
+  const left = Math.min(...bounds.map((box) => box.left));
+  const top = Math.min(...bounds.map((box) => box.top));
+  const right = Math.max(...bounds.map((box) => box.right));
+  const bottom = Math.max(...bounds.map((box) => box.bottom));
+
+  return {
+    left,
+    top,
+    right,
+    bottom,
+    width: right - left,
+    height: bottom - top,
+  };
+}
+
+function computeEntityBounds(layer) {
+  if (!layer) {
+    return null;
+  }
+
+  const transform = layer.transform || {};
+  const dimensions = layer.dimensions || {};
+  const width = (typeof dimensions.width === "number" ? dimensions.width : 0) * (typeof transform.scaleX === "number" ? transform.scaleX : 1);
+  const height = (typeof dimensions.height === "number" ? dimensions.height : 0) * (typeof transform.scaleY === "number" ? transform.scaleY : 1);
+  const x = typeof transform.x === "number" ? transform.x : 0;
+  const y = typeof transform.y === "number" ? transform.y : 0;
+  const rotation = (typeof transform.rotation === "number" ? transform.rotation : 0) * (Math.PI / 180);
+
+  if (Math.abs(rotation) < LAYER_BOUNDS_EPSILON) {
+    return {
+      left: x,
+      top: y,
+      right: x + width,
+      bottom: y + height,
+    };
+  }
+
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+
+  const corners = [
+    rotatePointForBounds(-width / 2, -height / 2, rotation),
+    rotatePointForBounds(width / 2, -height / 2, rotation),
+    rotatePointForBounds(width / 2, height / 2, rotation),
+    rotatePointForBounds(-width / 2, height / 2, rotation),
+  ];
+
+  const xs = corners.map((corner) => corner.x + centerX);
+  const ys = corners.map((corner) => corner.y + centerY);
+
+  return {
+    left: Math.min(...xs),
+    top: Math.min(...ys),
+    right: Math.max(...xs),
+    bottom: Math.max(...ys),
+  };
+}
+
+function rotatePointForBounds(x, y, angle) {
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return {
+    x: x * cos - y * sin,
+    y: x * sin + y * cos,
+  };
+}
+
+function clampUnit(value) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return 1;
+  }
+
+  if (value < 0) return 0;
+  if (value > 1) return 1;
+  return value;
+}
+
+const defaultLayerState = buildDefaultLayerState();
+const defaultSelectionItems = defaultLayerState.order.length ? [defaultLayerState.order[0]] : [];
+const defaultSelectionBounds =
+  defaultSelectionItems.length > 0
+    ? calculateBoundsForLayerIds(defaultLayerState.entities, defaultSelectionItems)
+    : null;
+
+const DEFAULT_TOOL_OPTIONS = {
+  pointer: { cursor: "default" },
+  move: {
+    snapToGrid: true,
+    snapToGuides: true,
+    snapTolerance: 6,
+    gridSize: 8,
+    angleIncrement: 15,
+    scaleIncrement: 0.05,
+    showHandles: true,
+    selectionMode: "replace",
+    constrainProportions: false,
+  },
+  brush: {
+    size: 32,
+    hardness: 0.75,
+    opacity: 0.9,
+    smoothing: 0.25,
+    spacing: 0.16,
+    flow: 0.9,
+    texture: false,
+  },
+  eraser: {
+    size: 48,
+    hardness: 0.35,
+    opacity: 1,
+    smoothing: 0.2,
+    spacing: 0.18,
+    flow: 1,
+    protectTransparency: false,
+  },
+};
+
 const defaultState = deepFreeze({
   project: {
     id: null,
@@ -71,13 +292,10 @@ const defaultState = deepFreeze({
     metadata: {},
   },
   layers: {
-    order: [],
-    entities: {},
-    active: null,
-    stats: {
-      count: 0,
-      visible: 0,
-    },
+    order: defaultLayerState.order,
+    entities: defaultLayerState.entities,
+    active: defaultLayerState.active,
+    stats: defaultLayerState.stats,
   },
   viewport: {
     zoom: 1,
@@ -87,12 +305,13 @@ const defaultState = deepFreeze({
   },
   tools: {
     active: "pointer",
-    options: {},
+    options: mergeDeep({}, DEFAULT_TOOL_OPTIONS),
     lastUsed: null,
+    cursor: "default",
   },
   selection: {
-    items: [],
-    bounds: null,
+    items: defaultSelectionItems,
+    bounds: defaultSelectionBounds,
     mode: "replace",
   },
   history: {
