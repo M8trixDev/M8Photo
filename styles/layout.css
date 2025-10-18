@@ -55,21 +55,112 @@
 
 .workspace-stage {
   position: relative;
+  display: grid;
+  place-items: center;
   min-height: 420px;
+  aspect-ratio: 16 / 9;
   border-radius: var(--radius-base);
-  background: radial-gradient(circle at 25% 20%, rgba(255, 255, 255, 0.08), transparent 70%), var(--color-surface-raised);
+  background:
+    radial-gradient(circle at 22% 18%, rgba(255, 255, 255, 0.08), transparent 68%),
+    radial-gradient(circle at 78% 82%, rgba(255, 255, 255, 0.04), transparent 60%),
+    var(--color-surface-raised);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-soft);
   overflow: hidden;
+  isolation: isolate;
+  transition: box-shadow var(--transition-gentle), transform var(--transition-snappy);
+}
+
+.workspace-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 70%);
+  opacity: 0.22;
+  transition: opacity var(--transition-gentle);
+}
+
+@supports not (aspect-ratio: 16 / 9) {
+  .workspace-stage {
+    padding-top: 56.25%;
+  }
+
+  .workspace-stage > * {
+    position: absolute;
+    inset: 0;
+  }
+}
+
+.workspace-stage.is-panning {
+  cursor: grabbing;
+}
+
+.workspace-stage.is-ready::after {
+  opacity: 0.16;
 }
 
 .workspace-canvas {
-  display: block;
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: auto;
-  mix-blend-mode: screen;
-  opacity: 0.12;
+  height: 100%;
+  display: block;
+  background: #0c111a;
+  mix-blend-mode: normal;
+  opacity: 1;
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  transition: filter var(--transition-snappy), opacity var(--transition-snappy);
+  z-index: 1;
+}
+
+.workspace-stage.is-panning .workspace-canvas {
+  cursor: grabbing;
+}
+
+.workspace-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   pointer-events: none;
+  opacity: 0;
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0) 65%),
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.05), transparent 55%);
+  transition: opacity var(--transition-gentle);
+}
+
+.workspace-grid.is-visible {
+  opacity: 1;
+}
+
+.workspace-hud {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(12, 16, 24, 0.6);
+  color: var(--color-text-primary);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity var(--transition-snappy), transform var(--transition-snappy);
+}
+
+.workspace-stage.is-ready .workspace-hud {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .workspace-placeholder {
@@ -80,6 +171,14 @@
   text-align: center;
   padding: 2rem;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), transparent 65%);
+  z-index: 3;
+  transition: opacity var(--transition-gentle), visibility var(--transition-gentle);
+}
+
+.workspace-placeholder.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .workspace-placeholder h1 {

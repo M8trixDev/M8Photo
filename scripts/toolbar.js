@@ -1,3 +1,6 @@
+import { store, DEFAULT_VIEWPORT_GRID } from "../modules/core/store.js";
+import { eventBus } from "../modules/core/events.js";
+
 const MENUS = [
   {
     label: "File",
@@ -39,6 +42,8 @@ export function initToolbar(scope = document) {
       ${renderQuickActions()}
     </div>
   `;
+
+  bindToolbarInteractions(toolbarEl);
 }
 
 function renderMenus() {
@@ -61,15 +66,9 @@ function renderMenus() {
           role="menu"
           data-collapsible-content
         >
-          <ul class="toolbar__menu-list">
+          <ul class="toolbar__menu-list" role="none">
             ${menu.items
-              .map(
-                (item) => `
-                  <li class="toolbar__menu-item" role="menuitem">
-                    <button type="button" class="toolbar__menu-action">${item}</button>
-                  </li>
-                `,
-              )
+              .map((item, itemIndex) => renderMenuItem(item, id, index, itemIndex))
               .join("")}
           </ul>
         </div>
@@ -87,4 +86,104 @@ function renderQuickActions() {
       </button>
     `,
   ).join("");
+}
+
+function renderMenuItem(item, _menuId, _menuIndex, _itemIndex) {
+  const descriptor = typeof item === "string" ? { label: item } : item || {};
+  const label = descriptor.label || String(item);
+  const command = descriptor.command || (label === "Grid Overlay" ? "viewport.toggleGrid" : null);
+  const role = command === "viewport.toggleGrid" ? "menuitemcheckbox" : "menuitem";
+
+  let stateAttr = "";
+  let checkedAttr = "";
+  if (command === "viewport.toggleGrid") {
+    const currentGrid = store.getState().viewport?.grid;
+    const visible = currentGrid ? currentGrid.visible !== false : true;
+    stateAttr = ` data-state="${visible ? "on" : "off"}"`;
+    checkedAttr = ` aria-checked="${visible ? "true" : "false"}"`;
+  }
+
+  const commandAttr = command ? ` data-command="${command}"` : "";
+  const toggleAttr = command === "viewport.toggleGrid" ? " data-toolbar-grid-toggle" : "";
+  const indicator = command === "viewport.toggleGrid" ? '<span class="toolbar__menu-indicator" aria-hidden="true">✓</span>' : "";
+
+  return `
+    <li class="toolbar__menu-item" role="none">
+      <button
+        type="button"
+        class="toolbar__menu-action"
+        role="${role}"
+        ${commandAttr}${toggleAttr}${stateAttr}${checkedAttr}
+      >
+        <span class="toolbar__menu-label">${label}</span>
+        ${indicator}
+      </button>
+    </li>
+  `;
+}
+
+function bindToolbarInteractions(toolbarEl) {
+  const gridToggle = toolbarEl.querySelector("[data-toolbar-grid-toggle]");
+
+  if (gridToggle) {
+    gridToggle.addEventListener("click", () => {
+      toggleGridOverlay();
+    });
+
+    const unsubscribe = store.subscribe(
+      (grid) => {
+        updateGridButton(gridToggle, grid);
+      },
+      {
+        selector: (state) => state.viewport.grid,
+        equality: Object.is,
+        fireImmediately: true,
+      }
+    );
+
+    if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+      window.addEventListener(
+        "beforeunload",
+        () => {
+          if (typeof unsubscribe === "function") {
+            unsubscribe();
+          }
+        },
+        { once: true }
+      );
+    }
+  }
+}
+
+function toggleGridOverlay() {
+  const currentState = store.getState();
+  const grid = currentState.viewport?.grid || DEFAULT_VIEWPORT_GRID;
+  const nextVisible = grid.visible === false;
+
+  store.updateSlice(
+    "viewport",
+    (viewport) => ({
+      ...viewport,
+      grid: { ...DEFAULT_VIEWPORT_GRID, ...viewport.grid, visible: nextVisible },
+    }),
+    { reason: "viewport:grid-toggle", source: "toolbar" }
+  );
+
+  if (eventBus) {
+    eventBus.emit("viewport:grid-toggle", {
+      visible: nextVisible,
+      source: "toolbar",
+    });
+  }
+}
+
+function updateGridButton(button, gridState) {
+  if (!button) {
+    return;
+  }
+
+  const visible = gridState ? gridState.visible !== false : true;
+  button.dataset.state = visible ? "on" : "off";
+  button.setAttribute("aria-checked", String(visible));
+  button.classList.toggle("is-active", visible);
 }
