@@ -1,5 +1,6 @@
 import { store, DEFAULT_VIEWPORT_GRID } from "../modules/core/store.js";
 import { eventBus } from "../modules/core/events.js";
+import { openImportDialog, openExportDialog } from "../modules/io/importExport.js";
 
 const MENUS = [
   {
@@ -78,20 +79,26 @@ function renderMenus() {
 }
 
 function renderQuickActions() {
-  return QUICK_ACTIONS.map(
-    (action) => `
-      <button class="toolbar__action" type="button">
+  return QUICK_ACTIONS.map((action) => {
+    const commandAttr = action.label === "Export" ? ' data-command="io.export"' : "";
+    return `
+      <button class="toolbar__action" type="button"${commandAttr}>
         <span class="toolbar__action-icon" aria-hidden="true">${action.icon}</span>
         <span class="toolbar__action-label">${action.label}</span>
       </button>
-    `,
-  ).join("");
+    `;
+  }).join("");
 }
 
 function renderMenuItem(item, _menuId, _menuIndex, _itemIndex) {
   const descriptor = typeof item === "string" ? { label: item } : item || {};
   const label = descriptor.label || String(item);
-  const command = descriptor.command || (label === "Grid Overlay" ? "viewport.toggleGrid" : null);
+  let command = descriptor.command || null;
+  if (!command) {
+    if (label === "Grid Overlay") command = "viewport.toggleGrid";
+    if (label === "Import Assets") command = "io.import";
+    if (label === "Save As…") command = "io.export";
+  }
   const role = command === "viewport.toggleGrid" ? "menuitemcheckbox" : "menuitem";
 
   let stateAttr = "";
@@ -153,6 +160,29 @@ function bindToolbarInteractions(toolbarEl) {
       );
     }
   }
+
+  // IO: Import / Export actions
+  const importButtons = toolbarEl.querySelectorAll('[data-command="io.import"]');
+  importButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      try {
+        openImportDialog();
+      } catch (e) {
+        console.warn("Import dialog failed", e);
+      }
+    });
+  });
+
+  const exportButtons = toolbarEl.querySelectorAll('[data-command="io.export"]');
+  exportButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      try {
+        openExportDialog();
+      } catch (e) {
+        console.warn("Export dialog failed", e);
+      }
+    });
+  });
 }
 
 function toggleGridOverlay() {

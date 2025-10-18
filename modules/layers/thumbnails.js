@@ -1,6 +1,7 @@
 import { store } from "../core/store.js";
 import { eventBus } from "../core/events.js";
 import { layerManager as sharedLayerManager, createLayerManager } from "./layerManager.js";
+import { getCanvas as getAssetCanvas } from "../io/assetStore.js";
 
 const DEFAULT_THUMBNAIL_WIDTH = 128;
 const DEFAULT_THUMBNAIL_HEIGHT = 96;
@@ -314,9 +315,21 @@ function paintLayerContent(context, layer) {
     return;
   }
 
-  const gradient = createLayerGradient(context, layer, width, height);
-  context.fillStyle = gradient;
-  context.fillRect(0, 0, width, height);
+  const assetId = layer?.metadata?.imageAssetId;
+  const imageCanvas = assetId ? getAssetCanvas(assetId) : null;
+  if (imageCanvas) {
+    try {
+      context.drawImage(imageCanvas, 0, 0, width, height);
+    } catch (e) {
+      const gradient = createLayerGradient(context, layer, width, height);
+      context.fillStyle = gradient;
+      context.fillRect(0, 0, width, height);
+    }
+  } else {
+    const gradient = createLayerGradient(context, layer, width, height);
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, width, height);
+  }
 
   if (layer.type === "effect") {
     context.save();
