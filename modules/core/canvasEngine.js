@@ -2,6 +2,7 @@ import { store } from "./store.js";
 import { eventBus } from "./events.js";
 import { createLayerManager } from "../layers/layerManager.js";
 import { resolveBlendMode } from "../layers/blendModes.js";
+import { getCanvas as getAssetCanvas } from "../io/assetStore.js";
 
 const DEFAULT_CANVAS_OPTIONS = Object.freeze({
   backgroundColor: "#0f121a",
@@ -105,9 +106,21 @@ function drawLayerContent(context, layer, metrics) {
     return;
   }
 
-  const gradient = createLayerGradient(context, layer, width, height);
-  context.fillStyle = gradient;
-  context.fillRect(0, 0, width, height);
+  const assetId = layer?.metadata?.imageAssetId;
+  const imageCanvas = assetId ? getAssetCanvas(assetId) : null;
+  if (imageCanvas) {
+    try {
+      context.drawImage(imageCanvas, 0, 0, width, height);
+    } catch (e) {
+      const gradient = createLayerGradient(context, layer, width, height);
+      context.fillStyle = gradient;
+      context.fillRect(0, 0, width, height);
+    }
+  } else {
+    const gradient = createLayerGradient(context, layer, width, height);
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, width, height);
+  }
 
   if (layer.type === "effect") {
     context.save();
