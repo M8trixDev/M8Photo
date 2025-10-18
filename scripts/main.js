@@ -1,6 +1,7 @@
 import { store } from "../modules/core/store.js";
 import { history } from "../modules/core/history.js";
 import { eventBus } from "../modules/core/events.js";
+import { initialiseAutosave } from "../modules/persist/autosave.js";
 import { initToolbar } from "./toolbar.js";
 import { initPanels } from "./panels.js";
 import { initTools } from "../modules/tools/index.js";
@@ -29,6 +30,17 @@ function runTeardown() {
     }
   }
 }
+
+const autosaveController = initialiseAutosave({ store, history, eventBus });
+
+registerTeardown(() => {
+  if (typeof autosaveController?.flush === "function") {
+    autosaveController.flush("app:teardown");
+  }
+  if (typeof autosaveController?.destroy === "function") {
+    autosaveController.destroy();
+  }
+});
 
 function exposeCoreModules() {
   if (coreExposed && globalScope.M8PhotoCore) {
@@ -203,13 +215,23 @@ async function registerServiceWorker() {
 }
 
 exposeCoreModules();
-bootstrapDevHarness();
+
+autosaveController.ready
+  .catch(() => {})
+  .finally(() => {
+    bootstrapDevHarness();
+  });
 
 if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
   window.addEventListener("beforeunload", runTeardown, { once: true });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  try {
+    await autosaveController.ready;
+  } catch (error) {
+    console.warn("[M8Photo] Proceeding without restored workspace state", error);
+  }
   bootAppShell();
   registerServiceWorker();
 });
