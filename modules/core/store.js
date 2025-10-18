@@ -102,6 +102,14 @@ const DEFAULT_LAYER_DEFINITIONS = [
 
 const LAYER_BOUNDS_EPSILON = 0.0001;
 
+export const DEFAULT_VIEWPORT_GRID = Object.freeze({
+  visible: true,
+  size: 32,
+  subdivisions: 4,
+  color: "rgba(255, 255, 255, 0.16)",
+  subdivisionColor: "rgba(255, 255, 255, 0.08)",
+});
+
 function buildDefaultLayerState() {
   const order = [];
   const entities = {};
@@ -150,7 +158,7 @@ function buildDefaultLayerState() {
   };
 }
 
-function calculateBoundsForLayerIds(entities, layerIds) {
+export function calculateBoundsForLayerIds(entities, layerIds) {
   if (!Array.isArray(layerIds) || layerIds.length === 0) {
     return null;
   }
@@ -180,7 +188,7 @@ function calculateBoundsForLayerIds(entities, layerIds) {
   };
 }
 
-function computeEntityBounds(layer) {
+export function computeEntityBounds(layer) {
   if (!layer) {
     return null;
   }
@@ -299,9 +307,13 @@ const defaultState = deepFreeze({
   },
   viewport: {
     zoom: 1,
+    minZoom: 0.25,
+    maxZoom: 4,
     pan: { x: 0, y: 0 },
     rotation: 0,
     size: { width: 1280, height: 720 },
+    canvas: { width: 0, height: 0, dpr: 1 },
+    grid: DEFAULT_VIEWPORT_GRID,
   },
   tools: {
     active: "pointer",

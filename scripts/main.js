@@ -4,9 +4,31 @@ import { eventBus } from "../modules/core/events.js";
 import { initToolbar } from "./toolbar.js";
 import { initPanels } from "./panels.js";
 import { initTools } from "../modules/tools/index.js";
+import { createCanvasEngine } from "../modules/core/canvasEngine.js";
+import { createViewportController } from "../modules/view/viewport.js";
 
 const globalScope = typeof window !== "undefined" ? window : globalThis;
 let coreExposed = false;
+let canvasEngineInstance = null;
+let viewportController = null;
+const teardownHandlers = [];
+
+function registerTeardown(task) {
+  if (typeof task === "function") {
+    teardownHandlers.push(task);
+  }
+}
+
+function runTeardown() {
+  while (teardownHandlers.length) {
+    const task = teardownHandlers.pop();
+    try {
+      task();
+    } catch (error) {
+      console.warn("Teardown task failed", error);
+    }
+  }
+}
 
 function exposeCoreModules() {
   if (coreExposed && globalScope.M8PhotoCore) {
@@ -88,6 +110,44 @@ function bootAppShell() {
 
   initToolbar(shellRoot);
   initPanels(shellRoot);
+
+  const stage = shellRoot.querySelector("[data-viewport-stage]");
+  const canvas = stage?.querySelector("#workspace-canvas");
+  const placeholder = stage?.querySelector(".workspace-placeholder");
+  const hud = stage?.querySelector("[data-viewport-hud]");
+  const gridOverlay = stage?.querySelector("[data-grid-overlay]");
+
+  if (canvas) {
+    viewportController = createViewportController({ canvas, container: stage, hud, gridOverlay });
+    registerTeardown(() => {
+      viewportController?.reset?.({ source: "teardown" });
+      viewportController?.destroy?.();
+      viewportController = null;
+    });
+
+    canvasEngineInstance = createCanvasEngine({ canvas, container: stage });
+    registerTeardown(() => {
+      canvasEngineInstance?.destroy?.();
+      canvasEngineInstance = null;
+    });
+
+    const detachReady = eventBus.once("canvas:ready", () => {
+      stage?.classList.add("is-ready");
+      placeholder?.classList.add("is-hidden");
+    });
+    registerTeardown(detachReady);
+
+    const detachRender = eventBus.on(
+      "canvas:render",
+      () => {
+        stage?.classList.add("is-ready");
+        placeholder?.classList.add("is-hidden");
+      },
+      { once: true }
+    );
+    registerTeardown(detachRender);
+  }
+
   initialiseCollapsibles(shellRoot);
 
   const activeTool = store.getState().tools?.active || "pointer";
@@ -95,13 +155,14 @@ function bootAppShell() {
 
   shellRoot.dataset.activeTool = activeTool;
 
-  eventBus.on("tools:change", (event) => {
+  const detachToolsListener = eventBus.on("tools:change", (event) => {
     if (!event || !event.detail) {
       return;
     }
     const { tool: nextTool } = event.detail;
     shellRoot.dataset.activeTool = nextTool || "pointer";
   });
+  registerTeardown(detachToolsListener);
 
   shellRoot.classList.add("is-initialised");
 }
@@ -143,6 +204,10 @@ async function registerServiceWorker() {
 
 exposeCoreModules();
 bootstrapDevHarness();
+
+if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+  window.addEventListener("beforeunload", runTeardown, { once: true });
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   bootAppShell();

@@ -19,7 +19,7 @@
       <header class="toolbar" data-toolbar aria-label="M8Photo main toolbar"></header>
       <div class="app-main">
         <section class="workspace" aria-labelledby="workspace-title">
-          <div class="workspace-stage">
+          <div class="workspace-stage" data-viewport-stage>
             <canvas
               id="workspace-canvas"
               class="workspace-canvas"
@@ -28,6 +28,8 @@
               role="img"
               aria-labelledby="workspace-title"
             ></canvas>
+            <div class="workspace-grid" data-grid-overlay aria-hidden="true"></div>
+            <div class="workspace-hud" data-viewport-hud aria-live="polite">100%</div>
             <div class="workspace-placeholder" id="workspace-title">
               <h1>M8Photo Studio</h1>
               <p>Precision editing with a calm grayscale aesthetic.</p>
