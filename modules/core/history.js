@@ -36,20 +36,54 @@ function isPlainObject(value) {
   return prototype === Object.prototype || prototype === null;
 }
 
-function serialiseEntry(entry) {
-  return {
+const hasStructuredClone = typeof structuredClone === "function";
+
+function cloneValue(value) {
+  if (value === null || typeof value === "undefined") {
+    return value;
+  }
+
+  if (typeof value !== "object") {
+    return value;
+  }
+
+  if (hasStructuredClone) {
+    try {
+      return structuredClone(value);
+    } catch (error) {
+      // Fallback to JSON cloning below.
+    }
+  }
+
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch (error) {
+    console.warn("[M8Photo] History clone failed", error);
+    return value;
+  }
+}
+
+function serialiseEntry(entry, options = {}) {
+  const meta = entry.meta;
+  const payload = {
     id: entry.id,
     label: entry.label,
     type: entry.type,
     timestamp: entry.timestamp,
     revisions: entry.revisions,
-    meta: entry.meta,
+    meta: meta && typeof meta === "object" ? cloneValue(meta) : meta ?? null,
     options: {
       coalesce: entry.options.coalesce,
       coalesceKey: entry.options.coalesceKey,
       coalesceWindow: entry.options.coalesceWindow,
     },
   };
+
+  if (options.includePayload) {
+    payload.payload = cloneValue(entry.payload);
+  }
+
+  return payload;
 }
 
 export function createHistoryManager(config = {}) {
@@ -317,6 +351,50 @@ export function createHistoryManager(config = {}) {
     return true;
   }
 
+  function hydrateSavedEntry(record) {
+    if (!record || typeof record !== "object") {
+      throw new TypeError("History snapshot entry must be an object");
+    }
+
+    const type = record.type;
+
+    if (typeof type !== "string") {
+      throw new TypeError("History snapshot entry requires a command type");
+    }
+
+    if (!commandRegistry.has(type)) {
+      throw new ReferenceError(`No command factory registered for "${type}"`);
+    }
+
+    const payload = cloneValue(record.payload);
+    const descriptor = hydrateCommand(type, payload, record.options || {});
+    const overrides = {
+      id: record.id,
+      label: record.label,
+      type,
+    };
+
+    if (isPlainObject(record.meta)) {
+      overrides.meta = cloneValue(record.meta);
+    }
+
+    if (isPlainObject(record.options)) {
+      overrides.coalesce = record.options.coalesce;
+      overrides.coalesceKey = record.options.coalesceKey;
+      overrides.coalesceWindow = record.options.coalesceWindow;
+    }
+
+    const entry = buildEntry(descriptor, payload, overrides);
+    entry.timestamp = typeof record.timestamp === "number" ? record.timestamp : Date.now();
+    entry.revisions = typeof record.revisions === "number" ? record.revisions : 1;
+
+    if (!isPlainObject(record.meta) && record.meta !== undefined) {
+      entry.meta = record.meta;
+    }
+
+    return entry;
+  }
+
   function execute(target, payload, options = {}) {
     const descriptor = hydrateCommand(target, payload, options);
     const entry = buildEntry(descriptor, payload, options);
@@ -478,8 +556,110 @@ export function createHistoryManager(config = {}) {
     return Array.from(commandRegistry.keys());
   }
 
-  function getStackSnapshot() {
-    return historyStack.map((entry) => serialiseEntry(entry));
+  function exportState() {
+    const entries = historyStack.map((entry) => serialiseEntry(entry, { includePayload: true }));
+    let hydratable = true;
+
+    for (let index = 0; index < entries.length; index += 1) {
+      const record = entries[index];
+      if (typeof record?.type !== "string" || !commandRegistry.has(record.type)) {
+        hydratable = false;
+        break;
+      }
+    }
+
+    return {
+      pointer,
+      entries,
+      settings: { capacity: settings.capacity, coalesceWindow: settings.coalesceWindow },
+      hydratable,
+      exportedAt: Date.now(),
+    };
+  }
+
+  function importState(snapshot, options = {}) {
+    const reason = options.reason ?? "hydrate";
+
+    if (!snapshot || typeof snapshot !== "object") {
+      historyStack.length = 0;
+      pointer = -1;
+
+      syncStoreHistory({ reason });
+
+      if (bus) {
+        bus.emit("history:hydrate", {
+          pointer,
+          size: historyStack.length,
+          restored: 0,
+          reason,
+        });
+      }
+
+      return { pointer, size: historyStack.length, restored: 0 };
+    }
+
+    if (!Array.isArray(snapshot.entries)) {
+      throw new TypeError("History snapshot entries must provide an entries array");
+    }
+
+    const hydratedEntries = snapshot.entries.map((record) => hydrateSavedEntry(record));
+
+    historyStack.length = 0;
+    hydratedEntries.forEach((entry) => {
+      historyStack.push(entry);
+    });
+
+    if (isPlainObject(snapshot.settings)) {
+      if (typeof snapshot.settings.capacity === "number" && snapshot.settings.capacity > 0) {
+        settings.capacity = Math.floor(snapshot.settings.capacity);
+      }
+
+      if (typeof snapshot.settings.coalesceWindow === "number" && snapshot.settings.coalesceWindow >= 0) {
+        settings.coalesceWindow = snapshot.settings.coalesceWindow;
+      }
+    }
+
+    pointer =
+      typeof snapshot.pointer === "number" && Number.isFinite(snapshot.pointer)
+        ? Math.trunc(snapshot.pointer)
+        : historyStack.length - 1;
+
+    if (pointer > historyStack.length - 1) {
+      pointer = historyStack.length - 1;
+    }
+
+    if (pointer < -1) {
+      pointer = -1;
+    }
+
+    enforceCapacity("hydrate");
+
+    if (pointer > historyStack.length - 1) {
+      pointer = historyStack.length - 1;
+    }
+
+    if (pointer < -1) {
+      pointer = -1;
+    }
+
+    syncStoreHistory({ reason });
+
+    const restored = historyStack.length;
+
+    if (bus) {
+      bus.emit("history:hydrate", {
+        pointer,
+        size: historyStack.length,
+        restored,
+        reason,
+      });
+    }
+
+    return { pointer, size: historyStack.length, restored };
+  }
+
+  function getStackSnapshot(options = {}) {
+    return historyStack.map((entry) => serialiseEntry(entry, options));
   }
 
   function getPointer() {
@@ -498,6 +678,8 @@ export function createHistoryManager(config = {}) {
     registerCommand,
     hasCommand,
     getCommandNames,
+    exportState,
+    importState,
     execute,
     undo,
     redo,
