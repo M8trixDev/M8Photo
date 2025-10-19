@@ -136,18 +136,78 @@ function drawLayerContent(context, layer, metrics) {
     // Also render any strokes (effects) above text if present
     if (Array.isArray(layer.strokes) && layer.strokes.length > 0) {
       context.save();
-      context.lineJoin = "round";
-      context.lineCap = "round";
-      const strokeWidth = Math.max(1.25, 6 / (metrics.zoom || 1));
-      context.lineWidth = strokeWidth;
-      context.globalAlpha = 0.85;
-      context.strokeStyle = `hsla(${(hashStringToHue(layer.id) + 180) % 360}, 72%, 60%, 0.75)`;
-
       layer.strokes.forEach((stroke) => {
+        if (stroke && stroke.tool === "shape") {
+          const type = (stroke.type || stroke.options?.shape || "rectangle").toLowerCase();
+          const opts = stroke.options || {};
+          const geom = stroke.geometry || {};
+          context.save();
+          context.lineJoin = "round";
+          context.lineCap = "round";
+          context.lineWidth = Math.max(1, Number(opts.strokeWidth) || 1);
+          context.strokeStyle = typeof opts.strokeColor === "string" ? opts.strokeColor : "#ffffff";
+          context.fillStyle = typeof opts.fillColor === "string" ? opts.fillColor : "rgba(0,0,0,0)";
+          const doStroke = opts.strokeEnabled !== false && (Number(opts.strokeWidth) || 0) > 0;
+          const doFill = opts.fillEnabled !== false && type !== "line";
+
+          if (type === "rectangle") {
+            const x = Number(geom.x) || 0;
+            const y = Number(geom.y) || 0;
+            const w = Math.max(0, Number(geom.width) || 0);
+            const h = Math.max(0, Number(geom.height) || 0);
+            const r = Math.max(0, Math.min(Number(opts.cornerRadius) || 0, Math.min(w, h) / 2));
+            context.beginPath();
+            if (r > 0) {
+              // rounded rect
+              context.moveTo(x + r, y);
+              context.lineTo(x + w - r, y);
+              context.quadraticCurveTo(x + w, y, x + w, y + r);
+              context.lineTo(x + w, y + h - r);
+              context.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+              context.lineTo(x + r, y + h);
+              context.quadraticCurveTo(x, y + h, x, y + h - r);
+              context.lineTo(x, y + r);
+              context.quadraticCurveTo(x, y, x + r, y);
+            } else {
+              context.rect(x, y, w, h);
+            }
+            if (doFill) context.fill();
+            if (doStroke) context.stroke();
+          } else if (type === "ellipse") {
+            const cx = (Number(geom.x) || 0) + (Number(geom.width) || 0) / 2;
+            const cy = (Number(geom.y) || 0) + (Number(geom.height) || 0) / 2;
+            const rx = Math.max(0, (Number(geom.width) || 0) / 2);
+            const ry = Math.max(0, (Number(geom.height) || 0) / 2);
+            context.beginPath();
+            context.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+            if (doFill) context.fill();
+            if (doStroke) context.stroke();
+          } else if (type === "line") {
+            const x1 = Number(geom.x1) || 0;
+            const y1 = Number(geom.y1) || 0;
+            const x2 = Number(geom.x2) || 0;
+            const y2 = Number(geom.y2) || 0;
+            context.beginPath();
+            context.moveTo(x1, y1);
+            context.lineTo(x2, y2);
+            if (doStroke) context.stroke();
+          }
+          context.restore();
+          return;
+        }
+
+        // Default polyline (e.g., brush/eraser)
         const points = Array.isArray(stroke?.points) ? stroke.points : [];
         if (points.length < 2) {
           return;
         }
+        context.save();
+        context.lineJoin = "round";
+        context.lineCap = "round";
+        const strokeWidth = Math.max(1.25, 6 / (metrics.zoom || 1));
+        context.lineWidth = strokeWidth;
+        context.globalAlpha = 0.85;
+        context.strokeStyle = `hsla(${(hashStringToHue(layer.id) + 180) % 360}, 72%, 60%, 0.75)`;
         context.beginPath();
         context.moveTo(points[0].x, points[0].y);
         for (let index = 1; index < points.length; index += 1) {
@@ -155,6 +215,7 @@ function drawLayerContent(context, layer, metrics) {
           context.lineTo(point.x, point.y);
         }
         context.stroke();
+        context.restore();
       });
 
       context.restore();
@@ -197,18 +258,77 @@ function drawLayerContent(context, layer, metrics) {
 
   if (Array.isArray(layer.strokes) && layer.strokes.length > 0) {
     context.save();
-    context.lineJoin = "round";
-    context.lineCap = "round";
-    const strokeWidth = Math.max(1.25, 6 / (metrics.zoom || 1));
-    context.lineWidth = strokeWidth;
-    context.globalAlpha = 0.85;
-    context.strokeStyle = `hsla(${(hashStringToHue(layer.id) + 180) % 360}, 72%, 60%, 0.75)`;
-
     layer.strokes.forEach((stroke) => {
+      if (stroke && stroke.tool === "shape") {
+        const type = (stroke.type || stroke.options?.shape || "rectangle").toLowerCase();
+        const opts = stroke.options || {};
+        const geom = stroke.geometry || {};
+        context.save();
+        context.lineJoin = "round";
+        context.lineCap = "round";
+        context.lineWidth = Math.max(1, Number(opts.strokeWidth) || 1);
+        context.strokeStyle = typeof opts.strokeColor === "string" ? opts.strokeColor : "#ffffff";
+        context.fillStyle = typeof opts.fillColor === "string" ? opts.fillColor : "rgba(0,0,0,0)";
+        const doStroke = opts.strokeEnabled !== false && (Number(opts.strokeWidth) || 0) > 0;
+        const doFill = opts.fillEnabled !== false && type !== "line";
+
+        if (type === "rectangle") {
+          const x = Number(geom.x) || 0;
+          const y = Number(geom.y) || 0;
+          const w = Math.max(0, Number(geom.width) || 0);
+          const h = Math.max(0, Number(geom.height) || 0);
+          const r = Math.max(0, Math.min(Number(opts.cornerRadius) || 0, Math.min(w, h) / 2));
+          context.beginPath();
+          if (r > 0) {
+            context.moveTo(x + r, y);
+            context.lineTo(x + w - r, y);
+            context.quadraticCurveTo(x + w, y, x + w, y + r);
+            context.lineTo(x + w, y + h - r);
+            context.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            context.lineTo(x + r, y + h);
+            context.quadraticCurveTo(x, y + h, x, y + h - r);
+            context.lineTo(x, y + r);
+            context.quadraticCurveTo(x, y, x + r, y);
+          } else {
+            context.rect(x, y, w, h);
+          }
+          if (doFill) context.fill();
+          if (doStroke) context.stroke();
+        } else if (type === "ellipse") {
+          const cx = (Number(geom.x) || 0) + (Number(geom.width) || 0) / 2;
+          const cy = (Number(geom.y) || 0) + (Number(geom.height) || 0) / 2;
+          const rx = Math.max(0, (Number(geom.width) || 0) / 2);
+          const ry = Math.max(0, (Number(geom.height) || 0) / 2);
+          context.beginPath();
+          context.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+          if (doFill) context.fill();
+          if (doStroke) context.stroke();
+        } else if (type === "line") {
+          const x1 = Number(geom.x1) || 0;
+          const y1 = Number(geom.y1) || 0;
+          const x2 = Number(geom.x2) || 0;
+          const y2 = Number(geom.y2) || 0;
+          context.beginPath();
+          context.moveTo(x1, y1);
+          context.lineTo(x2, y2);
+          if (doStroke) context.stroke();
+        }
+        context.restore();
+        return;
+      }
+
+      // Default polyline (e.g., brush/eraser)
       const points = Array.isArray(stroke?.points) ? stroke.points : [];
       if (points.length < 2) {
         return;
       }
+      context.save();
+      context.lineJoin = "round";
+      context.lineCap = "round";
+      const strokeWidth = Math.max(1.25, 6 / (metrics.zoom || 1));
+      context.lineWidth = strokeWidth;
+      context.globalAlpha = 0.85;
+      context.strokeStyle = `hsla(${(hashStringToHue(layer.id) + 180) % 360}, 72%, 60%, 0.75)`;
       context.beginPath();
       context.moveTo(points[0].x, points[0].y);
       for (let index = 1; index < points.length; index += 1) {
@@ -216,6 +336,7 @@ function drawLayerContent(context, layer, metrics) {
         context.lineTo(point.x, point.y);
       }
       context.stroke();
+      context.restore();
     });
 
     context.restore();

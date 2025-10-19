@@ -6,6 +6,8 @@ const TOOL_ORDER = [
   { id: "move", label: "Move", icon: "⤧" },
   { id: "brush", label: "Brush", icon: "✎" },
   { id: "eraser", label: "Eraser", icon: "⌫" },
+  { id: "fill", label: "Fill", icon: "◍" },
+  { id: "shape", label: "Shape", icon: "▭" },
   { id: "text", label: "Text", icon: "T" },
   { id: "crop", label: "Crop", icon: "▦" },
 ];
@@ -69,6 +71,8 @@ export function renderPropertiesPanel() {
         ${renderMoveSection()}
         ${renderBrushSection("brush")}
         ${renderBrushSection("eraser")}
+        ${renderFillSection()}
+        ${renderShapeSection()}
         ${renderTextSection()}
       </div>
     </div>
@@ -90,8 +94,11 @@ export function initPropertiesPanel(panelElement) {
     updateMoveControls(controls.move, toolsState.options?.move || toolsApi.getOptions("move"));
     updateBrushControls(controls.brush, toolsState.options?.brush || toolsApi.getOptions("brush"));
     updateBrushControls(controls.eraser, toolsState.options?.eraser || toolsApi.getOptions("eraser"));
+    updateFillControls(controls.fill, toolsState.options?.fill || toolsApi.getOptions("fill"));
+    updateShapeControls(controls.shape, toolsState.options?.shape || toolsApi.getOptions("shape"));
     updateTextControls(controls.text, toolsState.options?.text || toolsApi.getOptions("text"));
   };
+
 
   const unsubscribe = store.subscribe(onStoreUpdate, {
     selector: (state) => state.tools,
@@ -102,6 +109,8 @@ export function initPropertiesPanel(panelElement) {
   bindMoveEvents(controls.move, toolsApi);
   bindBrushEvents(controls.brush, toolsApi, "brush");
   bindBrushEvents(controls.eraser, toolsApi, "eraser");
+  bindFillEvents(controls.fill, toolsApi);
+  bindShapeEvents(controls.shape, toolsApi);
   bindTextEvents(controls.text, toolsApi);
 
   root.dataset.subscription = "active";
@@ -224,6 +233,88 @@ function renderBrushSection(toolId) {
   `;
 }
 
+function renderFillSection() {
+  return `
+    <section class="properties-section" data-tool-section="fill" hidden>
+      <h3 class="properties-section__title">Fill Options</h3>
+      <label class="properties-field">
+        <span>Fill color</span>
+        <input type="color" data-fill-input="fillColor" />
+      </label>
+      <div class="properties-field properties-field--range">
+        <div class="properties-field__header">
+          <span>Tolerance</span>
+          <output data-range-value>0</output>
+        </div>
+        <input type="range" min="0" max="255" step="1" data-fill-range="tolerance" />
+      </div>
+      <div class="properties-field properties-field--range">
+        <div class="properties-field__header">
+          <span>Opacity</span>
+          <output data-range-value>0%</output>
+        </div>
+        <input type="range" min="0" max="100" step="1" data-fill-range="opacity" />
+      </div>
+      <label class="properties-field properties-field--toggle">
+        <input type="checkbox" data-fill-toggle="contiguous" />
+        <span>Contiguous region</span>
+      </label>
+      <label class="properties-field properties-field--toggle">
+        <input type="checkbox" data-fill-toggle="respectAlpha" />
+        <span>Respect alpha</span>
+      </label>
+    </section>
+  `;
+}
+
+function renderShapeSection() {
+  return `
+    <section class="properties-section" data-tool-section="shape" hidden>
+      <h3 class="properties-section__title">Shape Options</h3>
+      <label class="properties-field">
+        <span>Shape</span>
+        <select data-shape-select="shape">
+          <option value="rectangle">Rectangle</option>
+          <option value="ellipse">Ellipse</option>
+          <option value="line">Line</option>
+        </select>
+      </label>
+      <label class="properties-field">
+        <span>Fill color</span>
+        <input type="color" data-shape-input="fillColor" />
+      </label>
+      <label class="properties-field properties-field--toggle">
+        <input type="checkbox" data-shape-toggle="fillEnabled" />
+        <span>Fill enabled</span>
+      </label>
+      <label class="properties-field">
+        <span>Stroke color</span>
+        <input type="color" data-shape-input="strokeColor" />
+      </label>
+      <label class="properties-field properties-field--toggle">
+        <input type="checkbox" data-shape-toggle="strokeEnabled" />
+        <span>Stroke enabled</span>
+      </label>
+      <div class="properties-field properties-field--range">
+        <div class="properties-field__header">
+          <span>Stroke width</span>
+          <output data-range-value>0 px</output>
+        </div>
+        <input type="range" min="0" max="64" step="1" data-shape-range="strokeWidth" />
+      </div>
+      <div class="properties-field properties-field--range">
+        <div class="properties-field__header">
+          <span>Corner radius</span>
+          <output data-range-value>0 px</output>
+        </div>
+        <input type="range" min="0" max="128" step="1" data-shape-range="cornerRadius" />
+        <small class="properties-field__hint">Applies to rectangles only</small>
+      </div>
+      <p class="properties-section__hint">Hold Shift while dragging to constrain (square/circle/45° line).</p>
+    </section>
+  `;
+}
+
 function renderTextSection() {
   return `
     <section class="properties-section" data-tool-section="text" hidden>
@@ -307,12 +398,46 @@ function collectControls(root) {
     },
   };
 
+  const fillControls = {
+    inputs: {
+      fillColor: root.querySelector('[data-fill-input="fillColor"]'),
+    },
+    ranges: {
+      tolerance: root.querySelector('[data-fill-range="tolerance"]'),
+      opacity: root.querySelector('[data-fill-range="opacity"]'),
+    },
+    toggles: {
+      contiguous: root.querySelector('[data-fill-toggle="contiguous"]'),
+      respectAlpha: root.querySelector('[data-fill-toggle="respectAlpha"]'),
+    },
+  };
+
+  const shapeControls = {
+    selects: {
+      shape: root.querySelector('[data-shape-select="shape"]'),
+    },
+    inputs: {
+      fillColor: root.querySelector('[data-shape-input="fillColor"]'),
+      strokeColor: root.querySelector('[data-shape-input="strokeColor"]'),
+    },
+    ranges: {
+      strokeWidth: root.querySelector('[data-shape-range="strokeWidth"]'),
+      cornerRadius: root.querySelector('[data-shape-range="cornerRadius"]'),
+    },
+    toggles: {
+      fillEnabled: root.querySelector('[data-shape-toggle="fillEnabled"]'),
+      strokeEnabled: root.querySelector('[data-shape-toggle="strokeEnabled"]'),
+    },
+  };
+
   return {
     buttons: toolButtons,
     sections,
     move: moveControls,
     brush: brushControls,
     eraser: eraserControls,
+    fill: fillControls,
+    shape: shapeControls,
     text: textControls,
   };
 }
@@ -428,6 +553,49 @@ function updateTextControls(textControls, options) {
   if (colorInput) colorInput.value = safeOptions.color || "#ffffff";
 }
 
+function updateFillControls(fillControls, options) {
+  if (!fillControls) return;
+  const safe = options || {};
+  const colorInput = fillControls.inputs.fillColor;
+  if (colorInput) colorInput.value = safe.fillColor || "#000000";
+  const tolRange = fillControls.ranges.tolerance;
+  if (tolRange) {
+    const v = typeof safe.tolerance === "number" ? Math.round(safe.tolerance) : 32;
+    tolRange.value = String(v);
+    updateRangeOutput(tolRange, String(v));
+  }
+  const opRange = fillControls.ranges.opacity;
+  if (opRange) {
+    const ov = Math.round(((safe.opacity ?? 1) * 100));
+    opRange.value = String(ov);
+    updateRangeOutput(opRange, `${ov}%`);
+  }
+  const contiguousToggle = fillControls.toggles.contiguous;
+  if (contiguousToggle) contiguousToggle.checked = safe.contiguous !== false;
+  const alphaToggle = fillControls.toggles.respectAlpha;
+  if (alphaToggle) alphaToggle.checked = safe.respectAlpha !== false;
+}
+
+function updateShapeControls(shapeControls, options) {
+  if (!shapeControls) return;
+  const safe = options || {};
+  if (shapeControls.selects.shape) shapeControls.selects.shape.value = safe.shape || "rectangle";
+  if (shapeControls.inputs.fillColor) shapeControls.inputs.fillColor.value = safe.fillColor || "#000000";
+  if (shapeControls.inputs.strokeColor) shapeControls.inputs.strokeColor.value = safe.strokeColor || "#ffffff";
+  if (shapeControls.ranges.strokeWidth) {
+    const v = typeof safe.strokeWidth === "number" ? Math.round(safe.strokeWidth) : 3;
+    shapeControls.ranges.strokeWidth.value = String(v);
+    updateRangeOutput(shapeControls.ranges.strokeWidth, `${v} px`);
+  }
+  if (shapeControls.ranges.cornerRadius) {
+    const r = typeof safe.cornerRadius === "number" ? Math.round(safe.cornerRadius) : 0;
+    shapeControls.ranges.cornerRadius.value = String(r);
+    updateRangeOutput(shapeControls.ranges.cornerRadius, `${r} px`);
+  }
+  if (shapeControls.toggles.fillEnabled) shapeControls.toggles.fillEnabled.checked = safe.fillEnabled !== false;
+  if (shapeControls.toggles.strokeEnabled) shapeControls.toggles.strokeEnabled.checked = safe.strokeEnabled !== false;
+}
+
 function bindToolEvents(controls, toolsApi) {
   controls.buttons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -501,6 +669,104 @@ function bindBrushEvents(controlGroup, toolsApi, toolId) {
     toggle.addEventListener("change", (event) => {
       const optionKey = toolId === "eraser" ? "protectTransparency" : "texture";
       toolsApi.updateOptions(toolId, { [optionKey]: event.target.checked }, { source: "properties-panel" });
+    });
+  }
+}
+
+function bindFillEvents(fillControls, toolsApi) {
+  if (!fillControls) return;
+  const colorInput = fillControls.inputs.fillColor;
+  const tolRange = fillControls.ranges.tolerance;
+  const opRange = fillControls.ranges.opacity;
+  const contToggle = fillControls.toggles.contiguous;
+  const alphaToggle = fillControls.toggles.respectAlpha;
+
+  if (colorInput) {
+    colorInput.addEventListener("input", (e) => {
+      toolsApi.updateOptions("fill", { fillColor: e.target.value }, { source: "properties-panel" });
+    });
+  }
+  if (tolRange) {
+    tolRange.addEventListener("input", (e) => {
+      const v = Number(e.target.value);
+      if (!Number.isNaN(v)) {
+        updateRangeOutput(tolRange, String(v));
+        toolsApi.updateOptions("fill", { tolerance: v }, { source: "properties-panel" });
+      }
+    });
+  }
+  if (opRange) {
+    opRange.addEventListener("input", (e) => {
+      const raw = Number(e.target.value);
+      if (!Number.isNaN(raw)) {
+        updateRangeOutput(opRange, `${Math.round(raw)}%`);
+        toolsApi.updateOptions("fill", { opacity: clamp(raw / 100, 0, 1) }, { source: "properties-panel" });
+      }
+    });
+  }
+  if (contToggle) {
+    contToggle.addEventListener("change", (e) => {
+      toolsApi.updateOptions("fill", { contiguous: e.target.checked }, { source: "properties-panel" });
+    });
+  }
+  if (alphaToggle) {
+    alphaToggle.addEventListener("change", (e) => {
+      toolsApi.updateOptions("fill", { respectAlpha: e.target.checked }, { source: "properties-panel" });
+    });
+  }
+}
+
+function bindShapeEvents(shapeControls, toolsApi) {
+  if (!shapeControls) return;
+  const shapeSel = shapeControls.selects.shape;
+  const fillColor = shapeControls.inputs.fillColor;
+  const strokeColor = shapeControls.inputs.strokeColor;
+  const strokeWidth = shapeControls.ranges.strokeWidth;
+  const cornerRadius = shapeControls.ranges.cornerRadius;
+  const fillEnabled = shapeControls.toggles.fillEnabled;
+  const strokeEnabled = shapeControls.toggles.strokeEnabled;
+
+  if (shapeSel) {
+    shapeSel.addEventListener("change", (e) => {
+      toolsApi.updateOptions("shape", { shape: e.target.value }, { source: "properties-panel" });
+    });
+  }
+  if (fillColor) {
+    fillColor.addEventListener("input", (e) => {
+      toolsApi.updateOptions("shape", { fillColor: e.target.value }, { source: "properties-panel" });
+    });
+  }
+  if (strokeColor) {
+    strokeColor.addEventListener("input", (e) => {
+      toolsApi.updateOptions("shape", { strokeColor: e.target.value }, { source: "properties-panel" });
+    });
+  }
+  if (strokeWidth) {
+    strokeWidth.addEventListener("input", (e) => {
+      const v = Number(e.target.value);
+      if (!Number.isNaN(v)) {
+        updateRangeOutput(strokeWidth, `${Math.round(v)} px`);
+        toolsApi.updateOptions("shape", { strokeWidth: v }, { source: "properties-panel" });
+      }
+    });
+  }
+  if (cornerRadius) {
+    cornerRadius.addEventListener("input", (e) => {
+      const v = Number(e.target.value);
+      if (!Number.isNaN(v)) {
+        updateRangeOutput(cornerRadius, `${Math.round(v)} px`);
+        toolsApi.updateOptions("shape", { cornerRadius: v }, { source: "properties-panel" });
+      }
+    });
+  }
+  if (fillEnabled) {
+    fillEnabled.addEventListener("change", (e) => {
+      toolsApi.updateOptions("shape", { fillEnabled: e.target.checked }, { source: "properties-panel" });
+    });
+  }
+  if (strokeEnabled) {
+    strokeEnabled.addEventListener("change", (e) => {
+      toolsApi.updateOptions("shape", { strokeEnabled: e.target.checked }, { source: "properties-panel" });
     });
   }
 }
