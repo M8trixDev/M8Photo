@@ -145,6 +145,40 @@ export function initKeyboardShortcuts() {
       return;
     }
 
+    // Filters shortcuts
+    if (isMod) {
+      if (lower === "i") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        eventBus.emit("filter:apply", { type: "invert" });
+        return;
+      }
+      if (lower === "u") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        eventBus.emit("filter:apply", { type: "saturationHue" });
+        return;
+      }
+      if (lower === "b" && event.shiftKey) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        eventBus.emit("filter:apply", { type: "brightnessContrast" });
+        return;
+      }
+      if (lower === "g" && event.shiftKey) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        eventBus.emit("filter:apply", { type: "grayscale" });
+        return;
+      }
+      if (lower === "b" && event.altKey) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        eventBus.emit("filter:apply", { type: "blur" });
+        return;
+      }
+    }
+
     // Pan with arrow keys
     if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(key)) {
       const step = event.shiftKey ? 40 : 20;
