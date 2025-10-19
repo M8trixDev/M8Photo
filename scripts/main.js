@@ -9,6 +9,7 @@ import { createCanvasEngine } from "../modules/core/canvasEngine.js";
 import { createViewportController } from "../modules/view/viewport.js";
 import { initKeyboardShortcuts } from "./keys.js";
 import { initFilters } from "../modules/filters/index.js";
+import { initSidebar } from "./sidebar.js";
 
 const globalScope = typeof window !== "undefined" ? window : globalThis;
 let coreExposed = false;
@@ -124,6 +125,7 @@ function bootAppShell() {
 
   initToolbar(shellRoot);
   initPanels(shellRoot);
+  initSidebar(shellRoot);
   // Initialise filters system (menus and dialogs)
   try { initFilters(); } catch (e) { console.warn("Filters init failed", e); }
 
