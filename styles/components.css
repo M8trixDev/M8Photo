@@ -711,3 +711,68 @@
     transform: translate(-50%, -16px);
   }
 }
+
+/* Sticky headers inside sidebar scroll area */
+.panels__scroll .panel__header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--color-surface-raised);
+}
+
+/* Compact density overrides */
+body[data-density="compact"] .toolbar {
+  padding: 0.5rem 1rem;
+  gap: 0.75rem;
+}
+body[data-density="compact"] .toolbar__glyph {
+  width: 1.9rem;
+  height: 1.9rem;
+}
+body[data-density="compact"] .toolbar__action {
+  padding: 0.35rem 0.65rem;
+}
+
+body[data-density="compact"] .panel__header {
+  padding: 0.5rem 0.75rem;
+}
+body[data-density="compact"] .panel__content {
+  padding: 0.5rem 0.75rem 0.75rem;
+  gap: 0.6rem;
+}
+body[data-density="compact"] .panel-list {
+  gap: 0.35rem;
+}
+body[data-density="compact"] .panel-list__item {
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+}
+body[data-density="compact"] .layer-item__visibility,
+body[data-density="compact"] .layer-item__lock {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+body[data-density="compact"] .layer-item__preview {
+  width: 72px;
+  height: 48px;
+  border-radius: 8px;
+}
+body[data-density="compact"] .panel-cta {
+  padding: 0.45rem 0.85rem;
+}
+
+body[data-density="compact"] .properties-panel__toolbar {
+  gap: 0.35rem;
+}
+body[data-density="compact"] .properties-tool {
+  padding: 0.4rem 0.5rem;
+}
+body[data-density="compact"] .properties-section {
+  gap: 0.75rem;
+}
+body[data-density="compact"] .properties-field--toggle {
+  padding: 0.4rem 0.5rem;
+}
+body[data-density="compact"] .properties-field--range {
+  padding: 0.5rem;
+}
