@@ -134,8 +134,10 @@ function exec(command) {
       if (id) layerManager.removeLayer(id, { source: "menu", updateSelection: true });
       break;
     }
+    case "filter:brightnessContrast":
+    case "filter:saturationHue":
+    case "filter:grayscale":
     case "filter:blur":
-    case "filter:sharpen":
     case "filter:invert": {
       if (eventBus) eventBus.emit("filter:apply", { type: command.split(":")[1] });
       break;
@@ -253,9 +255,12 @@ const MENU_MODEL = [
     id: "filter",
     label: "Filter",
     items: [
-      { id: "filter:blur", label: "Blur" },
-      { id: "filter:sharpen", label: "Sharpen" },
-      { id: "filter:invert", label: "Invert" },
+      { id: "filter:brightnessContrast", label: "Brightness / Contrast", shortcut: `Mod+Shift+B` },
+      { id: "filter:saturationHue", label: "Saturation / Hue", shortcut: `Mod+U` },
+      { id: "filter:grayscale", label: "Grayscale", shortcut: `Mod+Shift+G` },
+      { type: "separator" },
+      { id: "filter:invert", label: "Invert", shortcut: `Mod+I` },
+      { id: "filter:blur", label: "Gaussian Blur", shortcut: `Mod+Alt+B` },
     ],
   },
   {
