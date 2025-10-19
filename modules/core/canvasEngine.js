@@ -197,8 +197,17 @@ function drawLayerContent(context, layer, metrics) {
         }
 
         // Default polyline (e.g., brush/eraser)
-        const points = Array.isArray(stroke?.points) ? stroke.points : [];
-        if (points.length < 2) {
+        const pointsArray = Array.isArray(stroke?.points) ? stroke.points : null;
+        const segments = Array.isArray(stroke?.pointsSegments)
+          ? stroke.pointsSegments
+          : pointsArray
+          ? [pointsArray]
+          : [];
+        let totalPoints = 0;
+        segments.forEach((seg) => {
+          totalPoints += Array.isArray(seg) ? seg.length : 0;
+        });
+        if (totalPoints < 2) {
           return;
         }
         context.save();
@@ -209,10 +218,19 @@ function drawLayerContent(context, layer, metrics) {
         context.globalAlpha = 0.85;
         context.strokeStyle = `hsla(${(hashStringToHue(layer.id) + 180) % 360}, 72%, 60%, 0.75)`;
         context.beginPath();
-        context.moveTo(points[0].x, points[0].y);
-        for (let index = 1; index < points.length; index += 1) {
-          const point = points[index];
-          context.lineTo(point.x, point.y);
+        let started = false;
+        for (let s = 0; s < segments.length; s += 1) {
+          const seg = segments[s];
+          if (!Array.isArray(seg) || seg.length === 0) continue;
+          for (let i = 0; i < seg.length; i += 1) {
+            const p = seg[i];
+            if (!started) {
+              context.moveTo(p.x, p.y);
+              started = true;
+            } else {
+              context.lineTo(p.x, p.y);
+            }
+          }
         }
         context.stroke();
         context.restore();
@@ -318,8 +336,17 @@ function drawLayerContent(context, layer, metrics) {
       }
 
       // Default polyline (e.g., brush/eraser)
-      const points = Array.isArray(stroke?.points) ? stroke.points : [];
-      if (points.length < 2) {
+      const pointsArray = Array.isArray(stroke?.points) ? stroke.points : null;
+      const segments = Array.isArray(stroke?.pointsSegments)
+        ? stroke.pointsSegments
+        : pointsArray
+        ? [pointsArray]
+        : [];
+      let totalPoints = 0;
+      segments.forEach((seg) => {
+        totalPoints += Array.isArray(seg) ? seg.length : 0;
+      });
+      if (totalPoints < 2) {
         return;
       }
       context.save();
@@ -330,10 +357,19 @@ function drawLayerContent(context, layer, metrics) {
       context.globalAlpha = 0.85;
       context.strokeStyle = `hsla(${(hashStringToHue(layer.id) + 180) % 360}, 72%, 60%, 0.75)`;
       context.beginPath();
-      context.moveTo(points[0].x, points[0].y);
-      for (let index = 1; index < points.length; index += 1) {
-        const point = points[index];
-        context.lineTo(point.x, point.y);
+      let started = false;
+      for (let s = 0; s < segments.length; s += 1) {
+        const seg = segments[s];
+        if (!Array.isArray(seg) || seg.length === 0) continue;
+        for (let i = 0; i < seg.length; i += 1) {
+          const p = seg[i];
+          if (!started) {
+            context.moveTo(p.x, p.y);
+            started = true;
+          } else {
+            context.lineTo(p.x, p.y);
+          }
+        }
       }
       context.stroke();
       context.restore();
@@ -615,6 +651,306 @@ export function createCanvasEngine(options = {}) {
     ctx.restore();
   }
 
+  // Cache pre-rendered layer base content (image/gradient/text/shapes) to avoid recomputing on pan/zoom
+  const baseCache = new Map();
+
+  function buildBaseCacheKey(layer, dpr) {
+    const dims = layer.dimensions || {};
+    const meta = layer.metadata || {};
+    const textKey = meta.text || "";
+    const imageKey = meta.imageAssetId || "";
+    const fontKey = `${meta.fontFamily || ""}|${meta.fontSize || ""}|${meta.fontWeight || ""}|${meta.align || ""}|${meta.color || ""}`;
+    return `${layer.id}|${layer.type}|${dims.width || 0}x${dims.height || 0}|${imageKey}|${textKey}|${fontKey}|@${dpr}`;
+  }
+
+  function drawLayerBaseToCanvas(canvas, layer, dpr) {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const dims = layer.dimensions || {};
+    const width = Math.max(0, dims.width || 0);
+    const height = Math.max(0, dims.height || 0);
+    const pixelW = Math.max(1, Math.floor(width * dpr));
+    const pixelH = Math.max(1, Math.floor(height * dpr));
+    if (canvas.width !== pixelW || canvas.height !== pixelH) {
+      canvas.width = pixelW;
+      canvas.height = pixelH;
+    }
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+
+    ctx.save();
+    ctx.scale(dpr, dpr);
+
+    // Render base layer content (image/gradient/text). Shape overlays are zoom-independent, include them here.
+    const widthLocal = width;
+    const heightLocal = height;
+
+    // Text or metadata text
+    if (layer.type === "text" || typeof layer?.metadata?.text === "string") {
+      const meta = layer.metadata || {};
+      const fontFamily = meta.fontFamily || "Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
+      const fontSize = typeof meta.fontSize === "number" ? meta.fontSize : 48;
+      const fontWeight = typeof meta.fontWeight === "number" ? meta.fontWeight : 400;
+      const align = typeof meta.align === "string" ? meta.align : "left";
+      const color = typeof meta.color === "string" ? meta.color : "#ffffff";
+      const text = String(meta.text || "");
+
+      ctx.save();
+      ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+      ctx.textAlign = align === "center" ? "center" : align === "right" ? "right" : "left";
+      ctx.textBaseline = "top";
+      ctx.fillStyle = color;
+
+      const lines = text.split(/\n/g);
+      const lineHeight = Math.max(fontSize * 1.25, 1);
+      let x = 0;
+      if (ctx.textAlign === "center") x = widthLocal / 2;
+      if (ctx.textAlign === "right") x = widthLocal;
+
+      for (let i = 0; i < lines.length; i += 1) {
+        ctx.fillText(lines[i], x, i * lineHeight);
+      }
+      ctx.restore();
+
+      // Include shape strokes (but not polyline brush strokes which are zoom-dependent)
+      if (Array.isArray(layer.strokes) && layer.strokes.length > 0) {
+        layer.strokes.forEach((stroke) => {
+          if (stroke && stroke.tool === "shape") {
+            const type = (stroke.type || stroke.options?.shape || "rectangle").toLowerCase();
+            const opts = stroke.options || {};
+            const geom = stroke.geometry || {};
+            ctx.save();
+            ctx.lineJoin = "round";
+            ctx.lineCap = "round";
+            ctx.lineWidth = Math.max(1, Number(opts.strokeWidth) || 1);
+            ctx.strokeStyle = typeof opts.strokeColor === "string" ? opts.strokeColor : "#ffffff";
+            ctx.fillStyle = typeof opts.fillColor === "string" ? opts.fillColor : "rgba(0,0,0,0)";
+            const doStroke = opts.strokeEnabled !== false && (Number(opts.strokeWidth) || 0) > 0;
+            const doFill = opts.fillEnabled !== false && type !== "line";
+
+            if (type === "rectangle") {
+              const x = Number(geom.x) || 0;
+              const y = Number(geom.y) || 0;
+              const w = Math.max(0, Number(geom.width) || 0);
+              const h = Math.max(0, Number(geom.height) || 0);
+              const r = Math.max(0, Math.min(Number(opts.cornerRadius) || 0, Math.min(w, h) / 2));
+              ctx.beginPath();
+              if (r > 0) {
+                ctx.moveTo(x + r, y);
+                ctx.lineTo(x + w - r, y);
+                ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+                ctx.lineTo(x + w, y + h - r);
+                ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                ctx.lineTo(x + r, y + h);
+                ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+                ctx.lineTo(x, y + r);
+                ctx.quadraticCurveTo(x, y, x + r, y);
+              } else {
+                ctx.rect(x, y, w, h);
+              }
+              if (doFill) ctx.fill();
+              if (doStroke) ctx.stroke();
+            } else if (type === "ellipse") {
+              const cx = (Number(geom.x) || 0) + (Number(geom.width) || 0) / 2;
+              const cy = (Number(geom.y) || 0) + (Number(geom.height) || 0) / 2;
+              const rx = Math.max(0, (Number(geom.width) || 0) / 2);
+              const ry = Math.max(0, (Number(geom.height) || 0) / 2);
+              ctx.beginPath();
+              ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+              if (doFill) ctx.fill();
+              if (doStroke) ctx.stroke();
+            } else if (type === "line") {
+              const x1 = Number(geom.x1) || 0;
+              const y1 = Number(geom.y1) || 0;
+              const x2 = Number(geom.x2) || 0;
+              const y2 = Number(geom.y2) || 0;
+              ctx.beginPath();
+              ctx.moveTo(x1, y1);
+              ctx.lineTo(x2, y2);
+              if (doStroke) ctx.stroke();
+            }
+            ctx.restore();
+          }
+        });
+      }
+    } else {
+      // Image or gradient content
+      const assetId = layer?.metadata?.imageAssetId;
+      const imageCanvas = assetId ? getAssetCanvas(assetId) : null;
+      if (imageCanvas) {
+        try {
+          ctx.drawImage(imageCanvas, 0, 0, widthLocal, heightLocal);
+        } catch (e) {
+          const gradient = createLayerGradient(ctx, layer, widthLocal, heightLocal);
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, widthLocal, heightLocal);
+        }
+      } else {
+        const gradient = createLayerGradient(ctx, layer, widthLocal, heightLocal);
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, widthLocal, heightLocal);
+      }
+
+      if (layer.type === "effect") {
+        ctx.save();
+        ctx.globalAlpha = 0.2;
+        ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+        const spacing = Math.max(12, 32 / 1); // not zoom-dependent here
+        for (let x = 0; x < widthLocal + heightLocal; x += spacing) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(0, x);
+          ctx.lineTo(0, x + spacing * 0.5);
+          ctx.lineTo(x + spacing * 0.5, 0);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      // Include shape strokes as part of base
+      if (Array.isArray(layer.strokes) && layer.strokes.length > 0) {
+        layer.strokes.forEach((stroke) => {
+          if (stroke && stroke.tool === "shape") {
+            const type = (stroke.type || stroke.options?.shape || "rectangle").toLowerCase();
+            const opts = stroke.options || {};
+            const geom = stroke.geometry || {};
+            ctx.save();
+            ctx.lineJoin = "round";
+            ctx.lineCap = "round";
+            ctx.lineWidth = Math.max(1, Number(opts.strokeWidth) || 1);
+            ctx.strokeStyle = typeof opts.strokeColor === "string" ? opts.strokeColor : "#ffffff";
+            ctx.fillStyle = typeof opts.fillColor === "string" ? opts.fillColor : "rgba(0,0,0,0)";
+            const doStroke = opts.strokeEnabled !== false && (Number(opts.strokeWidth) || 0) > 0;
+            const doFill = opts.fillEnabled !== false && type !== "line";
+
+            if (type === "rectangle") {
+              const x = Number(geom.x) || 0;
+              const y = Number(geom.y) || 0;
+              const w = Math.max(0, Number(geom.width) || 0);
+              const h = Math.max(0, Number(geom.height) || 0);
+              const r = Math.max(0, Math.min(Number(opts.cornerRadius) || 0, Math.min(w, h) / 2));
+              ctx.beginPath();
+              if (r > 0) {
+                ctx.moveTo(x + r, y);
+                ctx.lineTo(x + w - r, y);
+                ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+                ctx.lineTo(x + w, y + h - r);
+                ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                ctx.lineTo(x + r, y + h);
+                ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+                ctx.lineTo(x, y + r);
+                ctx.quadraticCurveTo(x, y, x + r, y);
+              } else {
+                ctx.rect(x, y, w, h);
+              }
+              if (doFill) ctx.fill();
+              if (doStroke) ctx.stroke();
+            } else if (type === "ellipse") {
+              const cx = (Number(geom.x) || 0) + (Number(geom.width) || 0) / 2;
+              const cy = (Number(geom.y) || 0) + (Number(geom.height) || 0) / 2;
+              const rx = Math.max(0, (Number(geom.width) || 0) / 2);
+              const ry = Math.max(0, (Number(geom.height) || 0) / 2);
+              ctx.beginPath();
+              ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+              if (doFill) ctx.fill();
+              if (doStroke) ctx.stroke();
+            } else if (type === "line") {
+              const x1 = Number(geom.x1) || 0;
+              const y1 = Number(geom.y1) || 0;
+              const x2 = Number(geom.x2) || 0;
+              const y2 = Number(geom.y2) || 0;
+              ctx.beginPath();
+              ctx.moveTo(x1, y1);
+              ctx.lineTo(x2, y2);
+              if (doStroke) ctx.stroke();
+            }
+            ctx.restore();
+          }
+        });
+      }
+    }
+
+    ctx.restore();
+  }
+
+  function getBaseCanvas(layer, dpr) {
+    const key = buildBaseCacheKey(layer, dpr);
+    let entry = baseCache.get(layer.id);
+    if (!entry || entry.key !== key) {
+      const offscreen = document.createElement("canvas");
+      drawLayerBaseToCanvas(offscreen, layer, dpr);
+      entry = { key, canvas: offscreen };
+      baseCache.set(layer.id, entry);
+    }
+    return entry.canvas;
+  }
+
+  function drawStrokePolylines(ctx, layer, metricsSnapshot) {
+    if (!Array.isArray(layer.strokes) || layer.strokes.length === 0) {
+      return;
+    }
+
+    const hue = (hashStringToHue(layer.id) + 180) % 360;
+    const strokeStyle = `hsla(${hue}, 72%, 60%, 0.75)`;
+
+    layer.strokes.forEach((stroke) => {
+      if (stroke && stroke.tool === "shape") {
+        return; // shapes handled in base
+      }
+      const pointsArray = Array.isArray(stroke.points) ? stroke.points : null;
+      const segments = Array.isArray(stroke.pointsSegments)
+        ? stroke.pointsSegments
+        : pointsArray
+        ? [pointsArray]
+        : [];
+      // Must have at least two points total
+      let totalPoints = 0;
+      segments.forEach((seg) => {
+        totalPoints += Array.isArray(seg) ? seg.length : 0;
+      });
+      if (totalPoints < 2) {
+        return;
+      }
+
+      ctx.save();
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      const strokeWidth = Math.max(1.25, 6 / (metricsSnapshot.zoom || 1));
+      ctx.lineWidth = strokeWidth;
+      ctx.globalAlpha = 0.85;
+      ctx.strokeStyle = strokeStyle;
+      ctx.beginPath();
+
+      let started = false;
+      let prevPoint = null;
+      for (let s = 0; s < segments.length; s += 1) {
+        const seg = segments[s];
+        if (!Array.isArray(seg) || seg.length === 0) continue;
+        for (let i = 0; i < seg.length; i += 1) {
+          const point = seg[i];
+          if (!started) {
+            ctx.moveTo(point.x, point.y);
+            started = true;
+          } else {
+            // Ensure continuity across segments
+            if (prevPoint && (point.x !== prevPoint.x || point.y !== prevPoint.y)) {
+              ctx.lineTo(point.x, point.y);
+            } else {
+              ctx.lineTo(point.x, point.y);
+            }
+          }
+          prevPoint = point;
+        }
+      }
+
+      ctx.stroke();
+      ctx.restore();
+    });
+  }
+
   function renderLayers(ctx, state, metricsSnapshot, optionsSnapshot) {
     const selectionItems = new Set(state.selection?.items || []);
     const layers = layerManager.getRenderableLayers({
@@ -646,7 +982,16 @@ export function createCanvasEngine(options = {}) {
       }
       ctx.scale(transform.scaleX || 1, transform.scaleY || 1);
 
-      drawLayerContent(ctx, layer, metricsSnapshot);
+      // Draw base content from cache, then draw dynamic polyline strokes
+      const baseCanvas = getBaseCanvas(layer, metricsSnapshot.dpr);
+      if (baseCanvas) {
+        ctx.drawImage(baseCanvas, 0, 0, width, height);
+      } else {
+        drawLayerContent(ctx, layer, metricsSnapshot);
+      }
+
+      // Dynamic strokes that depend on zoom (brush/eraser previews)
+      drawStrokePolylines(ctx, layer, metricsSnapshot);
 
       if (selectionItems.has(layer.id)) {
         drawSelectionOutline(ctx, layer, metricsSnapshot, optionsSnapshot);

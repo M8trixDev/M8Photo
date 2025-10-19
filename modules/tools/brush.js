@@ -387,21 +387,28 @@ function applyStrokeToLayer(store, payload) {
       const existingIndex = strokes.findIndex((stroke) => stroke.id === strokeId);
 
       if (existingIndex === -1) {
+        // Store stroke points in append-only segments to avoid copying large arrays on every update
         strokes.push({
           id: strokeId,
           tool: toolId,
           composite,
           options: { ...optionsSnapshot },
-          points: pointCopies,
+          // Use segments to minimise memory churn; draw routines will handle both shapes and segments
+          pointsSegments: [pointCopies],
           createdAt: timestamp,
           updatedAt: timestamp,
         });
       } else {
         const existing = strokes[existingIndex];
+        const existingSegments = Array.isArray(existing.pointsSegments)
+          ? existing.pointsSegments
+          : Array.isArray(existing.points)
+          ? [existing.points]
+          : [];
         strokes[existingIndex] = {
           ...existing,
           options: { ...existing.options, ...optionsSnapshot },
-          points: [...existing.points, ...pointCopies],
+          pointsSegments: [...existingSegments, pointCopies],
           updatedAt: timestamp,
         };
       }
@@ -481,18 +488,54 @@ function revertStrokePoints(store, payload) {
       }
 
       const stroke = strokes[index];
-      const nextPoints = stroke.points.slice(0, Math.max(0, stroke.points.length - pointCount));
 
-      reverted = stroke.points.length - nextPoints.length;
+      // Support both old single-array representation and new segmented representation
+      const hasSegments = Array.isArray(stroke.pointsSegments);
+      if (hasSegments) {
+        const segments = stroke.pointsSegments.slice();
+        let remaining = Math.max(0, pointCount);
+        let newSegments = segments.slice();
 
-      if (nextPoints.length === 0) {
-        strokes.splice(index, 1);
+        // Walk from the end removing points until remaining is depleted
+        for (let s = newSegments.length - 1; s >= 0 && remaining > 0; s -= 1) {
+          const seg = newSegments[s] || [];
+          if (remaining >= seg.length) {
+            remaining -= seg.length;
+            newSegments.splice(s, 1);
+          } else {
+            // Trim the last segment
+            const keep = seg.length - remaining;
+            newSegments[s] = seg.slice(0, keep);
+            remaining = 0;
+          }
+        }
+
+        const beforeCount = stroke.pointsSegments.reduce((acc, seg) => acc + (Array.isArray(seg) ? seg.length : 0), 0);
+        const afterCount = newSegments.reduce((acc, seg) => acc + (Array.isArray(seg) ? seg.length : 0), 0);
+        reverted = Math.max(0, beforeCount - afterCount);
+
+        if (afterCount === 0) {
+          strokes.splice(index, 1);
+        } else {
+          strokes[index] = {
+            ...stroke,
+            pointsSegments: newSegments,
+            updatedAt: Date.now(),
+          };
+        }
       } else {
-        strokes[index] = {
-          ...stroke,
-          points: nextPoints,
-          updatedAt: Date.now(),
-        };
+        const pointsArray = Array.isArray(stroke.points) ? stroke.points : [];
+        const nextPoints = pointsArray.slice(0, Math.max(0, pointsArray.length - pointCount));
+        reverted = pointsArray.length - nextPoints.length;
+        if (nextPoints.length === 0) {
+          strokes.splice(index, 1);
+        } else {
+          strokes[index] = {
+            ...stroke,
+            points: nextPoints,
+            updatedAt: Date.now(),
+          };
+        }
       }
 
       return {

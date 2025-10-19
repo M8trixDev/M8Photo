@@ -69,6 +69,7 @@
   overflow: hidden;
   isolation: isolate;
   transition: box-shadow var(--transition-gentle), transform var(--transition-snappy);
+  will-change: transform;
 }
 
 .workspace-stage::after {
@@ -114,6 +115,7 @@
   cursor: grab;
   touch-action: none;
   transition: filter var(--transition-snappy), opacity var(--transition-snappy);
+  will-change: opacity;
   z-index: 1;
 }
 
@@ -156,6 +158,7 @@
   opacity: 0;
   transform: translateY(-6px);
   transition: opacity var(--transition-snappy), transform var(--transition-snappy);
+  will-change: transform, opacity;
 }
 
 .workspace-stage.is-ready .workspace-hud {
