@@ -18,6 +18,12 @@
   --transition-snappy: 160ms ease;
   --transition-gentle: 280ms ease;
   --font-system: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  /* Density/spacing tokens */
+  --space-xxs: 2px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
 }
 
 * {
