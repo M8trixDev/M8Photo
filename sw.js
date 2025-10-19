@@ -1,4 +1,4 @@
-const CACHE_NAME = "m8photo-shell-v3";
+const CACHE_NAME = "m8photo-shell-v4";
 const OFFLINE_DOCUMENT = "/offline.html";
 const OFFLINE_IMAGE = "/assets/icons/icon-192.png";
 
@@ -59,6 +59,21 @@ self.addEventListener("activate", (event) => {
       )
       .then(() => self.clients.claim())
   );
+});
+
+self.addEventListener("message", (event) => {
+  const data = event.data;
+  if (!data || typeof data !== "object") return;
+  if (data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+  if (data.type === "CLEAR_OLD_CACHES") {
+    event.waitUntil(
+      caches
+        .keys()
+        .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
+    );
+  }
 });
 
 self.addEventListener("fetch", (event) => {

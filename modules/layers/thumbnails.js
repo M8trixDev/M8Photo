@@ -6,6 +6,7 @@ import { getCanvas as getAssetCanvas } from "../io/assetStore.js";
 const DEFAULT_THUMBNAIL_WIDTH = 128;
 const DEFAULT_THUMBNAIL_HEIGHT = 96;
 const DEFAULT_PADDING = 6;
+const supportsOffscreen = typeof OffscreenCanvas !== "undefined";
 
 export function createThumbnailManager(options = {}) {
   const storeRef = options.store ?? store;
@@ -129,32 +130,61 @@ export function createThumbnailManager(options = {}) {
     const version = layer.updatedAt ?? layer.createdAt ?? 0;
 
     const scheduleRender = () => {
+      const doRender = () => {
+        if (supportsOffscreen) {
+          if (!entry._offscreen) {
+            try { entry._offscreen = new OffscreenCanvas(1, 1); } catch (_) { entry._offscreen = null; }
+          }
+          if (entry._offscreen) {
+            renderThumbnail(entry._offscreen, layer, {
+              width: entry.width,
+              height: entry.height,
+              dpr: entry.dpr,
+            });
+            const pixelW = Math.max(1, Math.floor(entry.width * entry.dpr));
+            const pixelH = Math.max(1, Math.floor(entry.height * entry.dpr));
+            if (entry.canvas.width !== pixelW || entry.canvas.height !== pixelH) {
+              entry.canvas.width = pixelW;
+              entry.canvas.height = pixelH;
+            }
+            entry.canvas.style.width = `${entry.width}px`;
+            entry.canvas.style.height = `${entry.height}px`;
+            const ctx = entry.canvas.getContext("2d");
+            if (ctx) {
+              ctx.save();
+              ctx.setTransform(1, 0, 0, 1, 0, 0);
+              ctx.clearRect(0, 0, entry.canvas.width, entry.canvas.height);
+              ctx.drawImage(entry._offscreen, 0, 0, entry.canvas.width, entry.canvas.height);
+              ctx.restore();
+            }
+          } else {
+            // Fallback if OffscreenCanvas construction failed
+            renderThumbnail(entry.canvas, layer, {
+              width: entry.width,
+              height: entry.height,
+              dpr: entry.dpr,
+            });
+          }
+        } else {
+          renderThumbnail(entry.canvas, layer, {
+            width: entry.width,
+            height: entry.height,
+            dpr: entry.dpr,
+          });
+        }
+        entry.version = version;
+        entry.dirty = false;
+        entry._idleHandle = null;
+      };
+
       if (typeof requestIdleCallback === "function") {
         if (entry._idleHandle) {
           try { cancelIdleCallback(entry._idleHandle); } catch (_) {}
         }
-        entry._idleHandle = requestIdleCallback(() => {
-          renderThumbnail(entry.canvas, layer, {
-            width: entry.width,
-            height: entry.height,
-            dpr: entry.dpr,
-          });
-          entry.version = version;
-          entry.dirty = false;
-          entry._idleHandle = null;
-        }, { timeout: 250 });
+        entry._idleHandle = requestIdleCallback(doRender, { timeout: 250 });
       } else {
         // Fallback
-        setTimeout(() => {
-          renderThumbnail(entry.canvas, layer, {
-            width: entry.width,
-            height: entry.height,
-            dpr: entry.dpr,
-          });
-          entry.version = version;
-          entry.dirty = false;
-          entry._idleHandle = null;
-        }, 0);
+        setTimeout(doRender, 0);
       }
     };
 

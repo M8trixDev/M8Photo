@@ -340,43 +340,64 @@ export function initLayersPanel(panelElement) {
 }
 
 function updateLayerList(listElement, state) {
-  const layers = layerManager.listLayers({ state, bottomFirst: false });
-  const selectionSet = new Set(state.selection?.items || []);
-  const activeId = state.layers?.active || null;
+  if (!listElement) return;
 
-  const activeElement = typeof document !== "undefined" ? document.activeElement : null;
-  const focusedLayerId =
-    activeElement && listElement.contains(activeElement)
-      ? activeElement.closest?.("[data-layer-id]")?.dataset.layerId || null
-      : null;
+  // Coalesce DOM writes into a single frame to reduce layout thrash
+  listElement._latestState = state;
+  if (listElement._rafPending) return;
+  listElement._rafPending = true;
 
-  if (!layers.length) {
-    listElement.innerHTML = '<li class="panel-list__item is-empty">No layers available</li>';
-    return;
-  }
+  requestAnimationFrame(() => {
+    listElement._rafPending = false;
+    const s = listElement._latestState || state;
+    const layers = layerManager.listLayers({ state: s, bottomFirst: false });
+    const selectionSet = new Set(s.selection?.items || []);
+    const activeId = s.layers?.active || null;
 
-  const markup = layers.map((layer) => renderLayerListItem(layer, selectionSet, activeId)).join("");
-  listElement.innerHTML = markup;
+    const activeElement = typeof document !== "undefined" ? document.activeElement : null;
+    const focusedLayerId =
+      activeElement && listElement.contains(activeElement)
+        ? activeElement.closest?.("[data-layer-id]")?.dataset.layerId || null
+        : null;
 
-  layers.forEach((layer) => {
-    const container = listElement.querySelector(`[data-layer-id="${escapeSelector(layer.id)}"] [data-layer-thumb]`);
-    if (!container) {
+    if (!layers.length) {
+      const emptyMarkup = '<li class="panel-list__item is-empty">No layers available</li>';
+      if (listElement._lastMarkup !== emptyMarkup) {
+        listElement.innerHTML = emptyMarkup;
+        listElement._lastMarkup = emptyMarkup;
+      }
       return;
     }
-    const thumbnail = layerThumbnails.getThumbnail(layer.id, { width: 96, height: 64 });
-    container.innerHTML = "";
-    if (thumbnail) {
-      thumbnail.classList.add("layer-item__thumbnail");
-      container.appendChild(thumbnail);
+
+    const markup = layers.map((layer) => renderLayerListItem(layer, selectionSet, activeId)).join("");
+    if (listElement._lastMarkup !== markup) {
+      listElement.innerHTML = markup;
+      listElement._lastMarkup = markup;
+    }
+
+    // Defer thumbnail DOM mutations to next idle/rAF to keep scrolling smooth
+    requestAnimationFrame(() => {
+      layers.forEach((layer) => {
+        const container = listElement.querySelector(`[data-layer-id="${escapeSelector(layer.id)}"] [data-layer-thumb]`);
+        if (!container) {
+          return;
+        }
+        const thumbnail = layerThumbnails.getThumbnail(layer.id, { width: 96, height: 64 });
+        if (thumbnail && !container.contains(thumbnail)) {
+          container.innerHTML = "";
+          thumbnail.classList.add("layer-item__thumbnail");
+          container.appendChild(thumbnail);
+        }
+      });
+    });
+
+    if (focusedLayerId) {
+      const nextFocus = listElement.querySelector(`[data-layer-id="${escapeSelector(focusedLayerId)}"]`);
+      if (nextFocus) {
+        nextFocus.focus();
+      }
     }
   });
-
-  if (focusedLayerId) {
-    const nextFocus = listElement.querySelector(`[data-layer-id="${escapeSelector(focusedLayerId)}"]`);
-    if (nextFocus) {
-      nextFocus.focus();
-    }
-  }
 }
 
 function renderLayerListItem(layer, selectionSet, activeId) {
