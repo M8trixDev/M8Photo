@@ -5,6 +5,7 @@ import { getBlendModes } from "../../layers/blendModes.js";
 
 const TOOL_ORDER = [
   { id: "pointer", label: "Pointer", icon: "⬚" },
+  { id: "select", label: "Select", icon: "▧" },
   { id: "move", label: "Move", icon: "⤧" },
   { id: "brush", label: "Brush", icon: "✎" },
   { id: "eraser", label: "Eraser", icon: "⌫" },

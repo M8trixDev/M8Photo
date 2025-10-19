@@ -165,25 +165,39 @@ function registerFillCommand() {
       optionsSnapshot,
       seed,
       execute() {
-        const state = store.getState();
-        const layer = state.layers?.entities?.[layerId];
-        if (!layer || layer.locked) return null;
-        const canvas = ensureLayerAssetCanvas(layer);
-        const ctx = canvas.getContext("2d");
-        const dims = layer.dimensions || {};
-        const width = dims.width || canvas.width;
-        const height = dims.height || canvas.height;
-        const img = ctx.getImageData(0, 0, width, height);
-        beforeImageData = img.data.slice();
-        const result = applyFloodFill(img, seed.x, seed.y, optionsSnapshot);
-        appliedCount = result.filled || 0;
-        if (result.changed) {
-          ctx.putImageData(img, 0, 0);
-          changed = true;
-          if (eventBus) eventBus.emit("tools:fill:applied", { layerId, seed, filled: appliedCount });
-        }
-        return appliedCount;
-      },
+         const state = store.getState();
+         const layer = state.layers?.entities?.[layerId];
+         if (!layer || layer.locked) return null;
+         const canvas = ensureLayerAssetCanvas(layer);
+         const ctx = canvas.getContext("2d");
+         const dims = layer.dimensions || {};
+         const width = dims.width || canvas.width;
+         const height = dims.height || canvas.height;
+         const img = ctx.getImageData(0, 0, width, height);
+         beforeImageData = img.data.slice();
+         // Selection mask (if any)
+         let mask = null;
+         const region = state.selection?.region || null;
+         if (region && region.width > 0 && region.height > 0) {
+           const p1 = worldToLayerLocal(region.x, region.y, layer);
+           const p2 = worldToLayerLocal(region.x + region.width, region.y + region.height, layer);
+           const left = Math.max(0, Math.floor(Math.min(p1.x, p2.x)));
+           const top = Math.max(0, Math.floor(Math.min(p1.y, p2.y)));
+           const right = Math.min(width, Math.ceil(Math.max(p1.x, p2.x)));
+           const bottom = Math.min(height, Math.ceil(Math.max(p1.y, p2.y)));
+           if (right > left && bottom > top) {
+             mask = { left, top, right, bottom };
+           }
+         }
+         const result = applyFloodFill(img, seed.x, seed.y, optionsSnapshot, mask);
+         appliedCount = result.filled || 0;
+         if (result.changed) {
+           ctx.putImageData(img, 0, 0);
+           changed = true;
+           if (eventBus) eventBus.emit("tools:fill:applied", { layerId, seed, filled: appliedCount });
+         }
+         return appliedCount;
+       },
       undo() {
         if (!changed) return null;
         const state = store.getState();
@@ -214,13 +228,21 @@ function registerFillCommand() {
   });
 }
 
-function applyFloodFill(imageData, x, y, options) {
+function applyFloodFill(imageData, x, y, options, maskRect) {
   const width = imageData.width;
   const height = imageData.height;
   const data = imageData.data;
   const xi = Math.floor(x);
   const yi = Math.floor(y);
   if (xi < 0 || yi < 0 || xi >= width || yi >= height) return { changed: false, filled: 0 };
+
+  // Respect selection mask if provided
+  if (maskRect) {
+    const { left, top, right, bottom } = maskRect;
+    if (xi < left || xi >= right || yi < top || yi >= bottom) {
+      return { changed: false, filled: 0 };
+    }
+  }
 
   const idx = (yi * width + xi) * 4;
   const target = getPixelColor(data, idx);
@@ -241,6 +263,9 @@ function applyFloodFill(imageData, x, y, options) {
     while (stack.length) {
       const [cx, cy] = stack.pop();
       if (cx < 0 || cy < 0 || cx >= width || cy >= height) continue;
+      if (maskRect) {
+        if (cx < maskRect.left || cx >= maskRect.right || cy < maskRect.top || cy >= maskRect.bottom) continue;
+      }
       const cIndex = cy * width + cx;
       if (visited[cIndex]) continue;
       visited[cIndex] = 1;
@@ -260,9 +285,13 @@ function applyFloodFill(imageData, x, y, options) {
 
   // Non-contiguous: fill all matching pixels
   const tol = Math.max(0, Math.min(255, options.tolerance));
-  for (let py = 0; py < height; py += 1) {
-    let offset = py * width * 4;
-    for (let px = 0; px < width; px += 1) {
+  const yStart = maskRect ? Math.max(0, Math.floor(maskRect.top)) : 0;
+  const yEnd = maskRect ? Math.min(height, Math.ceil(maskRect.bottom)) : height;
+  const xStartDef = maskRect ? Math.max(0, Math.floor(maskRect.left)) : 0;
+  const xEndDef = maskRect ? Math.min(width, Math.ceil(maskRect.right)) : width;
+  for (let py = yStart; py < yEnd; py += 1) {
+    let offset = (py * width + (xStartDef)) * 4;
+    for (let px = xStartDef; px < xEndDef; px += 1) {
       const cur = { r: data[offset], g: data[offset + 1], b: data[offset + 2], a: data[offset + 3] };
       if (colorDistance(cur, target, options.respectAlpha) <= tol) {
         setPixelColor(data, offset, fill);

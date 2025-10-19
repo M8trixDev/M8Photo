@@ -177,6 +177,42 @@ export function initKeyboardShortcuts() {
         eventBus.emit("filter:apply", { type: "blur" });
         return;
       }
+      // Selection shortcuts
+      if (lower === "a") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const select = tools.getTool("select");
+        const vp = store.getState().viewport?.size || { width: 0, height: 0 };
+        if (select && typeof select.applyRect === "function") {
+          select.applyRect({ x: 0, y: 0, width: Math.max(1, vp.width || 0), height: Math.max(1, vp.height || 0) }, "replace");
+        }
+        return;
+      }
+      if (lower === "d") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const select = tools.getTool("select");
+        if (select && typeof select.deselect === "function") {
+          select.deselect();
+        }
+        return;
+      }
+    }
+
+    // Clear/Fill selection
+    if (event.shiftKey && (lower === "delete" || key === "Delete")) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const select = tools.getTool("select");
+      if (select && typeof select.clear === "function") select.clear();
+      return;
+    }
+    if (event.shiftKey && lower === "f5") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const select = tools.getTool("select");
+      if (select && typeof select.fill === "function") select.fill();
+      return;
     }
 
     // Pan with arrow keys

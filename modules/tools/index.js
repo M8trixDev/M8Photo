@@ -8,11 +8,12 @@ import { createTextTool } from "./text.js";
 import { createCropTool } from "./crop.js";
 import { createFillTool } from "./fill.js";
 import { createShapeTool } from "./shape.js";
+import { createSelectTool } from "./select.js";
 
  const POINTER_TOOL_ID = "pointer";
- const registry = new Map();
- const adapters = new Map();
- let initialised = false;
+  const registry = new Map();
+  const adapters = new Map();
+  let initialised = false;
 
 const pointerTool = {
   id: POINTER_TOOL_ID,
@@ -73,6 +74,9 @@ export function initTools() {
 
   const shapeTool = createShapeTool(context);
   registerTool(shapeTool);
+
+  const selectTool = createSelectTool(context);
+  registerTool(selectTool);
 
   initialised = true;
 
