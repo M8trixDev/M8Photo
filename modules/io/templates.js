@@ -2,7 +2,7 @@ import { store, initialState } from "../core/store.js";
 import { history } from "../core/history.js";
 import { eventBus } from "../core/events.js";
 
-const THUMBS_BASE = "/assets/template-thumbs";
+const THUMBS_BASE = "assets/template-thumbs";
 
 // Catalog of preset sizes with metadata
 // Keep entries minimal but useful for common workflows
