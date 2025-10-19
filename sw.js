@@ -1,4 +1,4 @@
-const CACHE_NAME = "m8photo-shell-v2";
+const CACHE_NAME = "m8photo-shell-v3";
 const OFFLINE_DOCUMENT = "/offline.html";
 const OFFLINE_IMAGE = "/assets/icons/icon-192.png";
 
@@ -30,9 +30,17 @@ const SHELL_ASSETS = [
   "/modules/dev/harness.js",
   "/modules/persist/indexeddb.js",
   "/modules/persist/autosave.js",
+  "/modules/io/templates.js",
+  "/modules/ui/dialogs/templatesDialog.js",
   OFFLINE_IMAGE,
   "/assets/icons/icon-512.png",
   "/assets/icons/favicon-64.png",
+  "/assets/template-thumbs/instagram-square.svg",
+  "/assets/template-thumbs/instagram-story.svg",
+  "/assets/template-thumbs/youtube-thumbnail.svg",
+  "/assets/template-thumbs/youtube-banner.svg",
+  "/assets/template-thumbs/twitter-header.svg",
+  "/assets/template-thumbs/facebook-post.svg",
 ];
 
 self.addEventListener("install", (event) => {
