@@ -6,6 +6,8 @@ import { createBrushTool } from "./brush.js";
 import { createEraserTool } from "./eraser.js";
 import { createTextTool } from "./text.js";
 import { createCropTool } from "./crop.js";
+import { createFillTool } from "./fill.js";
+import { createShapeTool } from "./shape.js";
 
  const POINTER_TOOL_ID = "pointer";
  const registry = new Map();
@@ -65,6 +67,12 @@ export function initTools() {
 
   const cropTool = createCropTool(context);
   registerTool(cropTool);
+
+  const fillTool = createFillTool(context);
+  registerTool(fillTool);
+
+  const shapeTool = createShapeTool(context);
+  registerTool(shapeTool);
 
   initialised = true;
 
