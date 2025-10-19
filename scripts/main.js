@@ -203,10 +203,31 @@ function initialiseCollapsibles(scope = document) {
     toggle.setAttribute("aria-expanded", String(!collapsedInitial));
     content.hidden = collapsedInitial;
 
+    const panelId = section.getAttribute("data-panel-id") || "";
+
+    function persistCollapsed(collapsed) {
+      try {
+        store.updateSlice(
+          "ui",
+          (ui) => {
+            const next = ui || {};
+            const panels = next.panels || {};
+            const collapsedMap = { ...(panels.collapsed || {}) };
+            if (panelId) collapsedMap[panelId] = Boolean(collapsed);
+            return { ...next, panels: { ...panels, collapsed: collapsedMap } };
+          },
+          { reason: "ui:panel-collapse", source: "collapsible" }
+        );
+      } catch (e) {
+        // ignore
+      }
+    }
+
     toggle.addEventListener("click", () => {
       const collapsed = section.classList.toggle("is-collapsed");
       toggle.setAttribute("aria-expanded", String(!collapsed));
       content.hidden = collapsed;
+      persistCollapsed(collapsed);
     });
   });
 }

@@ -1,5 +1,7 @@
 import { renderPropertiesPanel, initPropertiesPanel } from "../modules/ui/panels/propertiesPanel.js";
 import { renderLayersPanel, initLayersPanel } from "../modules/ui/panels/layersPanel.js";
+import { renderColorPanel, initColorPanel } from "../modules/ui/panels/colorPanel.js";
+import { store } from "../modules/core/store.js";
 
 const PANELS = [
   {
@@ -8,6 +10,13 @@ const PANELS = [
     collapsed: false,
     body: renderPropertiesPanel,
     onInit: initPropertiesPanel,
+  },
+  {
+    id: "color",
+    title: "Color",
+    collapsed: false,
+    body: renderColorPanel,
+    onInit: initColorPanel,
   },
   {
     id: "layers",
@@ -49,10 +58,21 @@ export function initPanels(scope = document) {
   });
 }
 
+function getCollapsedState(panelId, fallback = false) {
+  try {
+    const collapsed = store.getState()?.ui?.panels?.collapsed;
+    if (collapsed && Object.prototype.hasOwnProperty.call(collapsed, panelId)) {
+      return Boolean(collapsed[panelId]);
+    }
+  } catch (_) {}
+  return Boolean(fallback);
+}
+
 function renderPanel(panel, index) {
   const content = typeof panel.body === "function" ? panel.body(panel, index) : panel.body || "";
-  const collapsedClass = panel.collapsed ? " is-collapsed" : "";
   const panelId = panel.id || `panel-${index}`;
+  const isCollapsed = getCollapsedState(panelId, panel.collapsed);
+  const collapsedClass = isCollapsed ? " is-collapsed" : "";
 
   return `
     <section class="panel${collapsedClass}" data-collapsible data-panel-id="${panelId}">

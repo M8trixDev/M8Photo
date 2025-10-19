@@ -347,6 +347,29 @@ const defaultState = deepFreeze({
     version: 0,
     lastCommand: null,
   },
+  ui: {
+    panels: {
+      collapsed: {
+        properties: false,
+        color: false,
+        layers: false,
+        adjustments: true,
+        activity: true,
+      },
+    },
+    color: {
+      model: "hex",
+      hex: "#000000",
+      opacity: 1,
+      swatches: [
+        { hex: "#000000", opacity: 1 },
+        { hex: "#ffffff", opacity: 1 },
+        { hex: "#ff0000", opacity: 1 },
+        { hex: "#00ff00", opacity: 1 },
+        { hex: "#0000ff", opacity: 1 }
+      ],
+    },
+  },
 });
 
 deepFreeze(defaultState.project);
@@ -355,6 +378,7 @@ deepFreeze(defaultState.viewport);
 deepFreeze(defaultState.tools);
 deepFreeze(defaultState.selection);
 deepFreeze(defaultState.history);
+if (defaultState.ui) deepFreeze(defaultState.ui);
 
 function createStore(initialState = defaultState, options = {}) {
   const bus = options.eventBus ?? eventBus;
