@@ -1,5 +1,7 @@
 import { store } from "../../core/store.js";
 import { initTools } from "../../tools/index.js";
+import { layerManager } from "../../layers/layerManager.js";
+import { getBlendModes } from "../../layers/blendModes.js";
 
 const TOOL_ORDER = [
   { id: "pointer", label: "Pointer", icon: "⬚" },
@@ -67,6 +69,7 @@ export function renderPropertiesPanel() {
         ${TOOL_ORDER.map(renderToolButton).join("")}
       </div>
       <div class="properties-panel__body">
+        ${renderContextSection()}
         ${renderPointerSection()}
         ${renderMoveSection()}
         ${renderBrushSection("brush")}
@@ -79,6 +82,33 @@ export function renderPropertiesPanel() {
   `;
 }
 
+function renderContextSection() {
+  const blendOptions = getBlendModes().map((mode) => `<option value="${mode.id}">${escapeHtml(mode.label)}</option>`).join("");
+  return `
+    <section class="properties-section" data-context-section>
+      <h3 class="properties-section__title">Context</h3>
+      <p class="properties-section__hint" data-selection-summary>Selection: 0 layers</p>
+      <div class="properties-field properties-field--range">
+        <div class="properties-field__header">
+          <span>Layer opacity</span>
+          <output data-range-value>100%</output>
+        </div>
+        <input type="range" min="0" max="100" step="1" data-layer-opacity-range />
+      </div>
+      <label class="properties-field">
+        <span>Blend mode</span>
+        <select data-layer-blend-select>
+          ${blendOptions}
+        </select>
+      </label>
+      <label class="properties-field properties-field--toggle">
+        <input type="checkbox" data-layer-lock-toggle />
+        <span>Lock layer</span>
+      </label>
+    </section>
+  `;
+}
+
 export function initPropertiesPanel(panelElement) {
   const root = panelElement?.querySelector("[data-properties-panel-root]");
   if (!root) {
@@ -88,7 +118,8 @@ export function initPropertiesPanel(panelElement) {
   const toolsApi = initTools();
   const controls = collectControls(root);
 
-  const onStoreUpdate = (toolsState) => {
+  const onStoreUpdate = (slice) => {
+    const toolsState = slice.tools;
     updateToolButtons(controls, toolsState.active);
     updateSectionsVisibility(controls, toolsState.active);
     updateMoveControls(controls.move, toolsState.options?.move || toolsApi.getOptions("move"));
@@ -97,11 +128,13 @@ export function initPropertiesPanel(panelElement) {
     updateFillControls(controls.fill, toolsState.options?.fill || toolsApi.getOptions("fill"));
     updateShapeControls(controls.shape, toolsState.options?.shape || toolsApi.getOptions("shape"));
     updateTextControls(controls.text, toolsState.options?.text || toolsApi.getOptions("text"));
+    updateContextControls(controls.context, slice.layers, slice.selection);
   };
 
 
   const unsubscribe = store.subscribe(onStoreUpdate, {
-    selector: (state) => state.tools,
+    selector: (state) => ({ tools: state.tools, layers: state.layers, selection: state.selection }),
+    equality: (a, b) => a && b && a.tools === b.tools && a.layers === b.layers && a.selection === b.selection,
     fireImmediately: true,
   });
 
@@ -112,6 +145,7 @@ export function initPropertiesPanel(panelElement) {
   bindFillEvents(controls.fill, toolsApi);
   bindShapeEvents(controls.shape, toolsApi);
   bindTextEvents(controls.text, toolsApi);
+  bindContextEvents(controls.context);
 
   root.dataset.subscription = "active";
   root.addEventListener("panel:dispose", () => {
@@ -367,6 +401,13 @@ function collectControls(root) {
     sections.set(section.getAttribute("data-tool-section"), section);
   });
 
+  const contextControls = {
+    selectionSummary: root.querySelector('[data-selection-summary]'),
+    lock: root.querySelector('[data-layer-lock-toggle]'),
+    blend: root.querySelector('[data-layer-blend-select]'),
+    opacity: root.querySelector('[data-layer-opacity-range]'),
+  };
+
   const moveControls = {
     toggles: {
       snapToGrid: root.querySelector('[data-move-toggle="snapToGrid"]'),
@@ -433,6 +474,7 @@ function collectControls(root) {
   return {
     buttons: toolButtons,
     sections,
+    context: contextControls,
     move: moveControls,
     brush: brushControls,
     eraser: eraserControls,
@@ -475,6 +517,36 @@ function updateSectionsVisibility(controls, activeTool) {
     if (pointerSection) {
       pointerSection.hidden = false;
     }
+  }
+}
+
+function updateContextControls(contextControls, layersState, selectionState) {
+  if (!contextControls) return;
+  const activeId = layersState?.active || null;
+  const selection = Array.isArray(selectionState?.items) ? selectionState.items : [];
+  const summaryEl = contextControls.selectionSummary;
+  if (summaryEl) {
+    const count = selection.length;
+    summaryEl.textContent = count === 0 ? "Selection: none" : count === 1 ? "Selection: 1 layer" : `Selection: ${count} layers`;
+  }
+  const layer = activeId ? layerManager.getLayer(activeId) : null;
+  const lockEl = contextControls.lock;
+  const blendEl = contextControls.blend;
+  const opEl = contextControls.opacity;
+  const disabled = !layer;
+  if (lockEl) {
+    lockEl.disabled = disabled;
+    lockEl.checked = Boolean(layer?.locked);
+  }
+  if (blendEl) {
+    blendEl.disabled = disabled;
+    if (layer?.blendingMode) blendEl.value = String(layer.blendingMode);
+  }
+  if (opEl) {
+    opEl.disabled = disabled;
+    const v = Math.round(((layer?.opacity ?? 1) * 100));
+    opEl.value = String(v);
+    updateRangeOutput(opEl, `${v}%`);
   }
 }
 
@@ -602,6 +674,39 @@ function bindToolEvents(controls, toolsApi) {
       const toolId = button.dataset.toolTarget;
       toolsApi.setActive(toolId, { source: "properties-panel" });
     });
+  });
+}
+
+function bindContextEvents(contextControls) {
+  if (!contextControls) return;
+  const lockEl = contextControls.lock;
+  const blendEl = contextControls.blend;
+  const opEl = contextControls.opacity;
+
+  lockEl?.addEventListener("change", (e) => {
+    const state = store.getState();
+    const activeId = state.layers?.active;
+    if (!activeId) return;
+    layerManager.toggleLock(activeId, e.target.checked, { source: "properties-panel" });
+  });
+
+  blendEl?.addEventListener("change", (e) => {
+    const state = store.getState();
+    const activeId = state.layers?.active;
+    if (!activeId) return;
+    const mode = String(e.target.value || "normal").toLowerCase();
+    layerManager.updateLayer(activeId, { blendingMode: mode }, { source: "properties-panel" });
+  });
+
+  opEl?.addEventListener("input", (e) => {
+    const raw = Number(e.target.value);
+    if (Number.isNaN(raw)) return;
+    const state = store.getState();
+    const activeId = state.layers?.active;
+    if (!activeId) return;
+    const value = Math.max(0, Math.min(1, raw / 100));
+    updateRangeOutput(opEl, `${Math.round(value * 100)}%`);
+    layerManager.updateLayer(activeId, { opacity: value }, { source: "properties-panel" });
   });
 }
 
@@ -823,4 +928,13 @@ function clamp(value, min, max) {
   if (value < min) return min;
   if (value > max) return max;
   return value;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
