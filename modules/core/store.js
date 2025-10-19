@@ -337,6 +337,7 @@ const defaultState = deepFreeze({
     items: defaultSelectionItems,
     bounds: defaultSelectionBounds,
     mode: "replace",
+    region: null,
   },
   history: {
     pointer: -1,

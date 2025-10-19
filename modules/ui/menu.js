@@ -197,6 +197,10 @@ function exec(command) {
       tools.setActive("crop", { source: "menu" });
       break;
     }
+    case "tool:select": {
+      tools.setActive("select", { source: "menu" });
+      break;
+    }
     case "crop:apply": {
       const crop = tools.getTool("crop");
       if (crop && typeof crop.apply === "function") crop.apply();
@@ -205,6 +209,29 @@ function exec(command) {
     case "crop:cancel": {
       const crop = tools.getTool("crop");
       if (crop && typeof crop.cancel === "function") crop.cancel();
+      break;
+    }
+    case "select:all": {
+      const vp = store.getState().viewport?.size || { width: 0, height: 0 };
+      const select = tools.getTool("select");
+      if (select && typeof select.applyRect === "function") {
+        select.applyRect({ x: 0, y: 0, width: Math.max(1, vp.width || 0), height: Math.max(1, vp.height || 0) }, "replace");
+      }
+      break;
+    }
+    case "select:none": {
+      const select = tools.getTool("select");
+      if (select && typeof select.deselect === "function") select.deselect();
+      break;
+    }
+    case "select:clear": {
+      const select = tools.getTool("select");
+      if (select && typeof select.clear === "function") select.clear();
+      break;
+    }
+    case "select:fill": {
+      const select = tools.getTool("select");
+      if (select && typeof select.fill === "function") select.fill();
       break;
     }
     default: {
@@ -286,6 +313,18 @@ const MENU_MODEL = [
         return active && canApply;
       } },
       { id: "crop:cancel", label: "Cancel Crop", enabled: () => store.getState().tools?.active === "crop" },
+    ],
+  },
+  {
+    id: "select",
+    label: "Select",
+    items: [
+      { id: "tool:select", label: "Selection Tool" },
+      { id: "select:all", label: "Select All", shortcut: `Mod+A` },
+      { id: "select:none", label: "Deselect", shortcut: `Mod+D` },
+      { type: "separator" },
+      { id: "select:clear", label: "Clear Selection", shortcut: `Shift+Delete`, enabled: () => Boolean(store.getState().selection?.region) },
+      { id: "select:fill", label: "Fill Selection", shortcut: `Shift+F5`, enabled: () => Boolean(store.getState().selection?.region) },
     ],
   },
 ];
@@ -551,6 +590,18 @@ function updateDynamicStates(scope = document) {
     const enabled = store.getState().tools?.active === "crop";
     cancelBtn.disabled = !enabled;
     cancelBtn.setAttribute("aria-disabled", String(!enabled));
+  }
+  // Selection clear/fill availability
+  const hasRegion = Boolean(store.getState().selection?.region);
+  const clearBtn = scope.querySelector('[data-command="select:clear"]');
+  if (clearBtn) {
+    clearBtn.disabled = !hasRegion;
+    clearBtn.setAttribute("aria-disabled", String(!hasRegion));
+  }
+  const fillBtn = scope.querySelector('[data-command="select:fill"]');
+  if (fillBtn) {
+    fillBtn.disabled = !hasRegion;
+    fillBtn.setAttribute("aria-disabled", String(!hasRegion));
   }
 }
 

@@ -362,7 +362,27 @@ function applyStrokeToLayer(store, payload) {
       const strokes = Array.isArray(layer.strokes) ? layer.strokes.slice() : [];
       const timestamp = Date.now();
 
-      const pointCopies = points.map((point) => ({ ...point }));
+      let pointCopies = points.map((point) => ({ ...point }));
+
+      // Clip to selection region (world space)
+      try {
+        const selection = store.getState().selection || {};
+        const region = selection.region || null;
+        if (region && region.width > 0 && region.height > 0) {
+          pointCopies = pointCopies.filter((p) => {
+            const world = layerLocalToWorld(p.x, p.y, layer);
+            return (
+              world.x >= region.x && world.x <= region.x + region.width &&
+              world.y >= region.y && world.y <= region.y + region.height
+            );
+          });
+        }
+      } catch (_) {}
+
+      if (pointCopies.length === 0) {
+        applied = 0;
+        return layers;
+      }
 
       const existingIndex = strokes.findIndex((stroke) => stroke.id === strokeId);
 
@@ -404,6 +424,36 @@ function applyStrokeToLayer(store, payload) {
   );
 
   return applied;
+}
+
+function layerLocalToWorld(x, y, layer) {
+  const t = layer.transform || {};
+  const d = layer.dimensions || {};
+  const width = d.width || 0;
+  const height = d.height || 0;
+  const scaleX = typeof t.scaleX === "number" ? t.scaleX : 1;
+  const scaleY = typeof t.scaleY === "number" ? t.scaleY : 1;
+  const rotation = ((typeof t.rotation === "number" ? t.rotation : 0) * Math.PI) / 180;
+  const cx = width / 2;
+  const cy = height / 2;
+  // Scale
+  let px = x * scaleX;
+  let py = y * scaleY;
+  // Translate to center for rotation
+  px -= cx;
+  py -= cy;
+  if (Math.abs(rotation) > 1e-6) {
+    const cos = Math.cos(rotation);
+    const sin = Math.sin(rotation);
+    const rx = px * cos - py * sin;
+    const ry = px * sin + py * cos;
+    px = rx;
+    py = ry;
+  }
+  // Back from center and apply translation
+  px += cx + (t.x || 0);
+  py += cy + (t.y || 0);
+  return { x: px, y: py };
 }
 
 function revertStrokePoints(store, payload) {
