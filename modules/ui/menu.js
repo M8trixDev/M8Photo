@@ -100,8 +100,10 @@ function setLayerOpacity(percent) {
 function exec(command) {
   switch (command) {
     case "file:new": {
-      // Open import dialog as a new project
-      openImportDialog({ mode: "new-project" }).catch(() => {});
+      // Open templates dialog for new project
+      import("./dialogs/templatesDialog.js")
+        .then((module) => (module && typeof module.showTemplatesDialog === "function" ? module.showTemplatesDialog() : null))
+        .catch(() => {});
       break;
     }
     case "file:open": {
