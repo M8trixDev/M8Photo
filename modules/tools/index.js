@@ -4,11 +4,13 @@ import { eventBus } from "../core/events.js";
 import { createMoveTool } from "./move.js";
 import { createBrushTool } from "./brush.js";
 import { createEraserTool } from "./eraser.js";
+import { createTextTool } from "./text.js";
+import { createCropTool } from "./crop.js";
 
-const POINTER_TOOL_ID = "pointer";
-const registry = new Map();
-const adapters = new Map();
-let initialised = false;
+ const POINTER_TOOL_ID = "pointer";
+ const registry = new Map();
+ const adapters = new Map();
+ let initialised = false;
 
 const pointerTool = {
   id: POINTER_TOOL_ID,
@@ -57,6 +59,12 @@ export function initTools() {
 
   const eraserTool = createEraserTool({ ...context, brushTool });
   registerTool(eraserTool);
+
+  const textTool = createTextTool(context);
+  registerTool(textTool);
+
+  const cropTool = createCropTool(context);
+  registerTool(cropTool);
 
   initialised = true;
 

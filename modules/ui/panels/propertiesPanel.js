@@ -6,6 +6,8 @@ const TOOL_ORDER = [
   { id: "move", label: "Move", icon: "⤧" },
   { id: "brush", label: "Brush", icon: "✎" },
   { id: "eraser", label: "Eraser", icon: "⌫" },
+  { id: "text", label: "Text", icon: "T" },
+  { id: "crop", label: "Crop", icon: "▦" },
 ];
 
 const MOVE_RANGE_CONFIG = {
@@ -67,6 +69,7 @@ export function renderPropertiesPanel() {
         ${renderMoveSection()}
         ${renderBrushSection("brush")}
         ${renderBrushSection("eraser")}
+        ${renderTextSection()}
       </div>
     </div>
   `;
@@ -87,6 +90,7 @@ export function initPropertiesPanel(panelElement) {
     updateMoveControls(controls.move, toolsState.options?.move || toolsApi.getOptions("move"));
     updateBrushControls(controls.brush, toolsState.options?.brush || toolsApi.getOptions("brush"));
     updateBrushControls(controls.eraser, toolsState.options?.eraser || toolsApi.getOptions("eraser"));
+    updateTextControls(controls.text, toolsState.options?.text || toolsApi.getOptions("text"));
   };
 
   const unsubscribe = store.subscribe(onStoreUpdate, {
@@ -98,6 +102,7 @@ export function initPropertiesPanel(panelElement) {
   bindMoveEvents(controls.move, toolsApi);
   bindBrushEvents(controls.brush, toolsApi, "brush");
   bindBrushEvents(controls.eraser, toolsApi, "eraser");
+  bindTextEvents(controls.text, toolsApi);
 
   root.dataset.subscription = "active";
   root.addEventListener("panel:dispose", () => {
@@ -219,6 +224,51 @@ function renderBrushSection(toolId) {
   `;
 }
 
+function renderTextSection() {
+  return `
+    <section class="properties-section" data-tool-section="text" hidden>
+      <h3 class="properties-section__title">Text Options</h3>
+      <label class="properties-field">
+        <span>Font family</span>
+        <select data-text-select="fontFamily">
+          <option value="Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif">Inter / System</option>
+          <option value="Georgia, serif">Serif</option>
+          <option value="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace">Monospace</option>
+        </select>
+      </label>
+      <div class="properties-field properties-field--range">
+        <div class="properties-field__header">
+          <span>Font size</span>
+          <output data-range-value>0 px</output>
+        </div>
+        <input type="range" min="6" max="256" step="1" data-text-range="fontSize" />
+      </div>
+      <label class="properties-field">
+        <span>Weight</span>
+        <select data-text-select="fontWeight">
+          <option value="300">Light</option>
+          <option value="400">Regular</option>
+          <option value="500">Medium</option>
+          <option value="600">Semibold</option>
+          <option value="700">Bold</option>
+        </select>
+      </label>
+      <label class="properties-field">
+        <span>Align</span>
+        <select data-text-select="align">
+          <option value="left">Left</option>
+          <option value="center">Center</option>
+          <option value="right">Right</option>
+        </select>
+      </label>
+      <label class="properties-field">
+        <span>Color</span>
+        <input type="color" data-text-input="color" />
+      </label>
+    </section>
+  `;
+}
+
 function collectControls(root) {
   const toolButtons = Array.from(root.querySelectorAll("[data-tool-button]"));
   const sections = new Map();
@@ -243,12 +293,27 @@ function collectControls(root) {
   const brushControls = createBrushControlGroup(root, "brush");
   const eraserControls = createBrushControlGroup(root, "eraser");
 
+  const textControls = {
+    selects: {
+      fontFamily: root.querySelector('[data-text-select="fontFamily"]'),
+      fontWeight: root.querySelector('[data-text-select="fontWeight"]'),
+      align: root.querySelector('[data-text-select="align"]'),
+    },
+    ranges: {
+      fontSize: root.querySelector('[data-text-range="fontSize"]'),
+    },
+    inputs: {
+      color: root.querySelector('[data-text-input="color"]'),
+    },
+  };
+
   return {
     buttons: toolButtons,
     sections,
     move: moveControls,
     brush: brushControls,
     eraser: eraserControls,
+    text: textControls,
   };
 }
 
@@ -344,6 +409,25 @@ function updateBrushControls(controlGroup, options) {
   }
 }
 
+function updateTextControls(textControls, options) {
+  if (!textControls) return;
+  const safeOptions = options || {};
+  const familySel = textControls.selects.fontFamily;
+  const weightSel = textControls.selects.fontWeight;
+  const alignSel = textControls.selects.align;
+  const sizeRange = textControls.ranges.fontSize;
+  const colorInput = textControls.inputs.color;
+  if (familySel) familySel.value = safeOptions.fontFamily || "Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
+  if (weightSel) weightSel.value = String(safeOptions.fontWeight ?? 400);
+  if (alignSel) alignSel.value = safeOptions.align || "left";
+  if (sizeRange) {
+    const value = typeof safeOptions.fontSize === "number" ? safeOptions.fontSize : 48;
+    sizeRange.value = String(value);
+    updateRangeOutput(sizeRange, `${Math.round(value)} px`);
+  }
+  if (colorInput) colorInput.value = safeOptions.color || "#ffffff";
+}
+
 function bindToolEvents(controls, toolsApi) {
   controls.buttons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -417,6 +501,46 @@ function bindBrushEvents(controlGroup, toolsApi, toolId) {
     toggle.addEventListener("change", (event) => {
       const optionKey = toolId === "eraser" ? "protectTransparency" : "texture";
       toolsApi.updateOptions(toolId, { [optionKey]: event.target.checked }, { source: "properties-panel" });
+    });
+  }
+}
+
+function bindTextEvents(textControls, toolsApi) {
+  if (!textControls) return;
+  const familySel = textControls.selects.fontFamily;
+  const weightSel = textControls.selects.fontWeight;
+  const alignSel = textControls.selects.align;
+  const sizeRange = textControls.ranges.fontSize;
+  const colorInput = textControls.inputs.color;
+
+  if (familySel) {
+    familySel.addEventListener("change", (e) => {
+      toolsApi.updateOptions("text", { fontFamily: e.target.value }, { source: "properties-panel" });
+    });
+  }
+  if (weightSel) {
+    weightSel.addEventListener("change", (e) => {
+      const val = Number(e.target.value);
+      if (!Number.isNaN(val)) toolsApi.updateOptions("text", { fontWeight: val }, { source: "properties-panel" });
+    });
+  }
+  if (alignSel) {
+    alignSel.addEventListener("change", (e) => {
+      toolsApi.updateOptions("text", { align: e.target.value }, { source: "properties-panel" });
+    });
+  }
+  if (sizeRange) {
+    sizeRange.addEventListener("input", (e) => {
+      const raw = Number(e.target.value);
+      if (!Number.isNaN(raw)) {
+        updateRangeOutput(sizeRange, `${Math.round(raw)} px`);
+        toolsApi.updateOptions("text", { fontSize: raw }, { source: "properties-panel" });
+      }
+    });
+  }
+  if (colorInput) {
+    colorInput.addEventListener("input", (e) => {
+      toolsApi.updateOptions("text", { color: e.target.value }, { source: "properties-panel" });
     });
   }
 }

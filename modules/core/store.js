@@ -288,6 +288,18 @@ const DEFAULT_TOOL_OPTIONS = {
     flow: 1,
     protectTransparency: false,
   },
+  text: {
+    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
+    fontSize: 48,
+    fontWeight: 400,
+    align: "left",
+    color: "#ffffff",
+  },
+  crop: {
+    showGuides: true,
+    constrainAspect: false,
+    aspectRatio: null,
+  },
 };
 
 const defaultState = deepFreeze({

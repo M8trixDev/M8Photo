@@ -187,6 +187,24 @@ function exec(command) {
       tools.setActive("eraser", { source: "menu" });
       break;
     }
+    case "tool:text": {
+      tools.setActive("text", { source: "menu" });
+      break;
+    }
+    case "tool:crop": {
+      tools.setActive("crop", { source: "menu" });
+      break;
+    }
+    case "crop:apply": {
+      const crop = tools.getTool("crop");
+      if (crop && typeof crop.apply === "function") crop.apply();
+      break;
+    }
+    case "crop:cancel": {
+      const crop = tools.getTool("crop");
+      if (crop && typeof crop.cancel === "function") crop.cancel();
+      break;
+    }
     default: {
       if (eventBus) eventBus.emit("command:execute", { command });
       break;
@@ -249,6 +267,20 @@ const MENU_MODEL = [
       { id: "view:resetZoom", label: "Actual Size", shortcut: `Mod+0` },
       { type: "separator" },
       { id: "view:toggleGrid", label: "Grid Overlay", role: "menuitemcheckbox", getChecked: () => getGridVisible() },
+    ],
+  },
+  {
+    id: "image",
+    label: "Image",
+    items: [
+      { id: "tool:crop", label: "Crop Tool" },
+      { id: "crop:apply", label: "Apply Crop", enabled: () => {
+        const active = store.getState().tools?.active === "crop";
+        const crop = tools.getTool("crop");
+        const canApply = crop && typeof crop.hasSelection === "function" ? crop.hasSelection() : false;
+        return active && canApply;
+      } },
+      { id: "crop:cancel", label: "Cancel Crop", enabled: () => store.getState().tools?.active === "crop" },
     ],
   },
 ];
@@ -499,6 +531,22 @@ function updateDynamicStates(scope = document) {
       gridBtn.classList.remove("is-active");
     }
   }
+  // Crop apply/cancel states
+  const applyBtn = scope.querySelector('[data-command="crop:apply"]');
+  if (applyBtn) {
+    const active = store.getState().tools?.active === "crop";
+    const crop = tools.getTool("crop");
+    const canApply = crop && typeof crop.hasSelection === "function" ? crop.hasSelection() : false;
+    const enabled = active && canApply;
+    applyBtn.disabled = !enabled;
+    applyBtn.setAttribute("aria-disabled", String(!enabled));
+  }
+  const cancelBtn = scope.querySelector('[data-command="crop:cancel"]');
+  if (cancelBtn) {
+    const enabled = store.getState().tools?.active === "crop";
+    cancelBtn.disabled = !enabled;
+    cancelBtn.setAttribute("aria-disabled", String(!enabled));
+  }
 }
 
 export function initMenuBar(scope = document) {
@@ -553,12 +601,18 @@ export function initMenuBar(scope = document) {
     equality: Object.is,
     fireImmediately: true,
   });
+  const unsubscribeTools = store.subscribe(() => updateDynamicStates(menubar), {
+    selector: (s) => s.tools,
+    equality: Object.is,
+    fireImmediately: true,
+  });
 
   window.addEventListener("beforeunload", () => {
     try { document.removeEventListener("click", handleOutsideClick); } catch (_) {}
     try { menubar.removeEventListener("keydown", handleMenubarKeyNav); } catch (_) {}
     try { if (typeof unsubscribeHistory === "function") unsubscribeHistory(); } catch (_) {}
     try { if (typeof unsubscribeGrid === "function") unsubscribeGrid(); } catch (_) {}
+    try { if (typeof unsubscribeTools === "function") unsubscribeTools(); } catch (_) {}
   }, { once: true });
 
   updateDynamicStates(menubar);

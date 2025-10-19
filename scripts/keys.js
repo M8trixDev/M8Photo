@@ -174,6 +174,14 @@ export function initKeyboardShortcuts() {
         setActiveTool("eraser");
         return;
       }
+      if (lower === "t") {
+        setActiveTool("text");
+        return;
+      }
+      if (lower === "c") {
+        setActiveTool("crop");
+        return;
+      }
       // Opacity shortcuts (0-9)
       if (lower >= "0" && lower <= "9") {
         if (handleOpacityDigit(lower)) {

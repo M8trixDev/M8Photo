@@ -106,6 +106,62 @@ function drawLayerContent(context, layer, metrics) {
     return;
   }
 
+  // Text layers render text content instead of gradient/image
+  if (layer.type === "text" || typeof layer?.metadata?.text === "string") {
+    const meta = layer.metadata || {};
+    const fontFamily = meta.fontFamily || "Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
+    const fontSize = typeof meta.fontSize === "number" ? meta.fontSize : 48;
+    const fontWeight = typeof meta.fontWeight === "number" ? meta.fontWeight : 400;
+    const align = typeof meta.align === "string" ? meta.align : "left";
+    const color = typeof meta.color === "string" ? meta.color : "#ffffff";
+    const text = String(meta.text || "");
+
+    context.save();
+    context.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+    context.textAlign = align === "center" ? "center" : align === "right" ? "right" : "left";
+    context.textBaseline = "top";
+    context.fillStyle = color;
+
+    const lines = text.split(/\n/g);
+    const lineHeight = Math.max(fontSize * 1.25, 1);
+    let x = 0;
+    if (context.textAlign === "center") x = width / 2;
+    if (context.textAlign === "right") x = width;
+
+    for (let i = 0; i < lines.length; i += 1) {
+      context.fillText(lines[i], x, i * lineHeight);
+    }
+    context.restore();
+
+    // Also render any strokes (effects) above text if present
+    if (Array.isArray(layer.strokes) && layer.strokes.length > 0) {
+      context.save();
+      context.lineJoin = "round";
+      context.lineCap = "round";
+      const strokeWidth = Math.max(1.25, 6 / (metrics.zoom || 1));
+      context.lineWidth = strokeWidth;
+      context.globalAlpha = 0.85;
+      context.strokeStyle = `hsla(${(hashStringToHue(layer.id) + 180) % 360}, 72%, 60%, 0.75)`;
+
+      layer.strokes.forEach((stroke) => {
+        const points = Array.isArray(stroke?.points) ? stroke.points : [];
+        if (points.length < 2) {
+          return;
+        }
+        context.beginPath();
+        context.moveTo(points[0].x, points[0].y);
+        for (let index = 1; index < points.length; index += 1) {
+          const point = points[index];
+          context.lineTo(point.x, point.y);
+        }
+        context.stroke();
+      });
+
+      context.restore();
+    }
+    return;
+  }
+
   const assetId = layer?.metadata?.imageAssetId;
   const imageCanvas = assetId ? getAssetCanvas(assetId) : null;
   if (imageCanvas) {
