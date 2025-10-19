@@ -7,8 +7,8 @@
 .app-root {
   display: grid;
   grid-template-rows: auto 1fr;
-  grid-template-columns: minmax(0, 1fr) var(--sidebar-width, 320px);
-  column-gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) var(--sidebar-divider, 8px) var(--sidebar-width, 320px);
+  column-gap: 0;
   min-height: 100vh;
   backdrop-filter: blur(12px);
 }
@@ -63,6 +63,70 @@
   justify-content: stretch;
   height: 100%;
   min-height: 0;
+}
+
+/* Sidebar resizer between workspace and panels */
+.sidebar-resizer {
+  grid-column: 2 / 3;
+  grid-row: 2;
+  width: var(--sidebar-divider, 8px);
+  cursor: col-resize;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.sidebar-resizer__grip {
+  width: 2px;
+  height: 56px;
+  border-radius: 1px;
+  background: var(--color-border-soft);
+  opacity: 0.6;
+  transition: opacity var(--transition-snappy), background var(--transition-snappy), transform var(--transition-snappy);
+}
+
+.sidebar-resizer:hover .sidebar-resizer__grip,
+.is-resizing .sidebar-resizer__grip {
+  opacity: 0.9;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.sidebar-resizer__toggle {
+  position: absolute;
+  top: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--color-surface-highlight);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  display: grid;
+  place-items: center;
+  transition: background var(--transition-snappy), color var(--transition-snappy), transform var(--transition-snappy);
+}
+
+.sidebar-resizer__toggle:hover {
+  background: var(--color-accent-soft);
+  color: var(--color-text-primary);
+}
+
+/* Flip arrow icon when collapsed */
+.app-root.is-sidebar-collapsed .sidebar-resizer__toggle span[aria-hidden="true"] {
+  display: inline-block;
+  transform: scaleX(-1);
+}
+
+/* Collapsed state: sidebar width is zero and content hidden for perf */
+.app-root.is-sidebar-collapsed {
+  --sidebar-width: 0px;
+}
+.app-root.is-sidebar-collapsed .panels {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .workspace-stage {
@@ -199,7 +263,7 @@
 }
 
 .panels {
-  grid-column: 2 / 3;
+  grid-column: 3 / 4;
   grid-row: 2;
   display: grid;
   grid-template-rows: auto 1fr;
@@ -258,6 +322,9 @@
   }
   .panels {
     grid-column: 1 / -1;
+  }
+  .sidebar-resizer {
+    display: none;
   }
 }
 
