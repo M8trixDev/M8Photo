@@ -1,24 +1,25 @@
 {
-  "name": "M8Photo Studio",
-  "short_name": "M8Photo",
-  "start_url": "/",
-  "scope": "/",
+  "name": "M8 Studio",
+  "short_name": "M8",
+  "start_url": ".",
+  "scope": ".",
   "display": "standalone",
   "theme_color": "#1e1e1e",
   "background_color": "#101010",
-  "description": "Offline-capable workspace shell for the M8Photo creative suite.",
+  "description": "Offline-capable workspace shell for the M8 Studio creative suite.",
   "icons": [
     {
-      "src": "/assets/icons/icon-192.png",
+      "src": "assets/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/assets/icons/icon-512.png",
+      "src": "assets/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     }
-  ]
+  ],
+  "version": "0.1.0"
 }

@@ -1,5 +1,9 @@
 # M8 Studio
 
+[![Version](https://img.shields.io/badge/version-v0.1.0-blue)](https://github.com/M8trixDev/M8Photo/releases/tag/v0.1.0) [![PWA](https://img.shields.io/badge/PWA-installable-success)](https://M8trixDev.github.io/M8Photo/)
+
+Live: https://M8trixDev.github.io/M8Photo/
+
 A calm, monochrome creative workspace. M8 Studio (also referred to in code as M8Photo Studio) is an offline‑first, installable Progressive Web App focused on precision editing with a grayscale aesthetic and gentle depth cues.
 
 The app runs entirely in the browser using modern web platform APIs. No build step is required; serve the repository with a static file server and you are ready to explore the studio.

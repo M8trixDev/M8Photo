@@ -1,56 +1,55 @@
-const CACHE_NAME = "m8photo-shell-v4";
-const OFFLINE_DOCUMENT = "/offline.html";
-const OFFLINE_IMAGE = "/assets/icons/icon-192.png";
+const CACHE_NAME = "m8studio-shell-v0.1.0";
+const OFFLINE_DOCUMENT = "offline.html";
+const OFFLINE_IMAGE = "assets/icons/icon-192.png";
 
 const SHELL_ASSETS = [
-  "/",
-  "/index.html",
+  "index.html",
   OFFLINE_DOCUMENT,
-  "/manifest.json",
-  "/styles/theme.css",
-  "/styles/layout.css",
-  "/styles/components.css",
-  "/scripts/main.js",
-  "/scripts/toolbar.js",
-  "/scripts/panels.js",
-  "/modules/core/store.js",
-  "/modules/core/history.js",
-  "/modules/core/events.js",
-  "/modules/core/canvasEngine.js",
-  "/modules/layers/layerManager.js",
-  "/modules/layers/thumbnails.js",
-  "/modules/layers/blendModes.js",
-  "/modules/view/viewport.js",
-  "/modules/tools/index.js",
-  "/modules/tools/move.js",
-  "/modules/tools/brush.js",
-  "/modules/tools/eraser.js",
-  "/modules/ui/menu.js",
-  "/modules/ui/panels/layersPanel.js",
-  "/modules/ui/panels/propertiesPanel.js",
-  "/modules/dev/harness.js",
-  "/modules/persist/indexeddb.js",
-  "/modules/persist/autosave.js",
-  "/modules/io/assetStore.js",
-  "/modules/io/exif.js",
-  "/modules/io/importExport.js",
-  "/modules/io/templates.js",
-  "/modules/ui/dialogs/templatesDialog.js",
-  "/modules/ui/dialogs/exportDialog.js",
-  "/modules/ui/dialogs/brightnessContrastDialog.js",
-  "/modules/ui/dialogs/saturationHueDialog.js",
-  "/modules/ui/dialogs/blurDialog.js",
-  "/modules/ui/dialogs/invertDialog.js",
-  "/modules/ui/dialogs/grayscaleDialog.js",
+  "manifest.json",
+  "styles/theme.css",
+  "styles/layout.css",
+  "styles/components.css",
+  "scripts/main.js",
+  "scripts/toolbar.js",
+  "scripts/panels.js",
+  "modules/core/store.js",
+  "modules/core/history.js",
+  "modules/core/events.js",
+  "modules/core/canvasEngine.js",
+  "modules/layers/layerManager.js",
+  "modules/layers/thumbnails.js",
+  "modules/layers/blendModes.js",
+  "modules/view/viewport.js",
+  "modules/tools/index.js",
+  "modules/tools/move.js",
+  "modules/tools/brush.js",
+  "modules/tools/eraser.js",
+  "modules/ui/menu.js",
+  "modules/ui/panels/layersPanel.js",
+  "modules/ui/panels/propertiesPanel.js",
+  "modules/dev/harness.js",
+  "modules/persist/indexeddb.js",
+  "modules/persist/autosave.js",
+  "modules/io/assetStore.js",
+  "modules/io/exif.js",
+  "modules/io/importExport.js",
+  "modules/io/templates.js",
+  "modules/ui/dialogs/templatesDialog.js",
+  "modules/ui/dialogs/exportDialog.js",
+  "modules/ui/dialogs/brightnessContrastDialog.js",
+  "modules/ui/dialogs/saturationHueDialog.js",
+  "modules/ui/dialogs/blurDialog.js",
+  "modules/ui/dialogs/invertDialog.js",
+  "modules/ui/dialogs/grayscaleDialog.js",
   OFFLINE_IMAGE,
-  "/assets/icons/icon-512.png",
-  "/assets/icons/favicon-64.png",
-  "/assets/template-thumbs/instagram-square.svg",
-  "/assets/template-thumbs/instagram-story.svg",
-  "/assets/template-thumbs/youtube-thumbnail.svg",
-  "/assets/template-thumbs/youtube-banner.svg",
-  "/assets/template-thumbs/twitter-header.svg",
-  "/assets/template-thumbs/facebook-post.svg",
+  "assets/icons/icon-512.png",
+  "assets/icons/favicon-64.png",
+  "assets/template-thumbs/instagram-square.svg",
+  "assets/template-thumbs/instagram-story.svg",
+  "assets/template-thumbs/youtube-thumbnail.svg",
+  "assets/template-thumbs/youtube-banner.svg",
+  "assets/template-thumbs/twitter-header.svg",
+  "assets/template-thumbs/facebook-post.svg",
 ];
 
 self.addEventListener("install", (event) => {
@@ -115,11 +114,12 @@ async function handleNavigationRequest(request) {
       const copy = response.clone();
       cache.put(request, copy);
 
-      const { pathname } = new URL(request.url);
-      if (pathname === "/" || pathname === "/index.html") {
-        cache.put("/index.html", response.clone());
-      }
-    }
+const { pathname } = new URL(request.url);
+if (pathname.endsWith("/") || pathname.endsWith("/index.html")) {
+  const indexUrl = new URL("index.html", self.registration.scope);
+  cache.put(indexUrl.toString(), response.clone());
+}
+
 
     return response;
   } catch (error) {
@@ -128,6 +128,12 @@ async function handleNavigationRequest(request) {
 
     if (cached) {
       return cached;
+    }
+
+    const indexUrl = new URL("index.html", self.registration.scope);
+    const indexCached = (await cache.match(indexUrl.toString())) || (await cache.match("index.html"));
+    if (indexCached) {
+      return indexCached;
     }
 
     const offline = await cache.match(OFFLINE_DOCUMENT);
@@ -167,6 +173,11 @@ async function fallbackResponse(cache, request) {
   const fallback = await (async () => {
     switch (request.destination) {
       case "document": {
+        const indexUrl = new URL("index.html", self.registration.scope);
+        const indexCached = (await cache.match(indexUrl.toString())) || (await cache.match("index.html"));
+        if (indexCached) {
+          return indexCached;
+        }
         const offlinePage = await cache.match(OFFLINE_DOCUMENT);
         if (offlinePage) {
           return offlinePage;
