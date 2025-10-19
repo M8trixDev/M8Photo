@@ -63,6 +63,7 @@
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-soft);
   transition: opacity var(--transition-gentle), transform var(--transition-snappy), visibility var(--transition-snappy);
+  will-change: transform, opacity;
   z-index: 10;
 }
 
@@ -134,6 +135,7 @@
   background: var(--color-surface-highlight);
   color: var(--color-text-secondary);
   transition: background var(--transition-snappy), transform var(--transition-snappy), color var(--transition-snappy);
+  will-change: transform;
 }
 
 .toolbar__action:hover {
@@ -152,6 +154,7 @@
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-subtle);
   transition: transform var(--transition-snappy), box-shadow var(--transition-gentle);
+  will-change: transform;
   display: flex;
   flex-direction: column;
 }
@@ -427,6 +430,7 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--color-text-secondary);
   transition: transform var(--transition-snappy), background var(--transition-snappy), color var(--transition-snappy);
+  will-change: transform;
 }
 
 .panel-cta:hover {

@@ -115,6 +115,7 @@ export function createThumbnailManager(options = {}) {
         dpr: devicePixelRatio,
         version: null,
         dirty: true,
+        _idleHandle: null,
       };
       cache.set(cacheKey, entry);
     }
@@ -127,14 +128,39 @@ export function createThumbnailManager(options = {}) {
 
     const version = layer.updatedAt ?? layer.createdAt ?? 0;
 
+    const scheduleRender = () => {
+      if (typeof requestIdleCallback === "function") {
+        if (entry._idleHandle) {
+          try { cancelIdleCallback(entry._idleHandle); } catch (_) {}
+        }
+        entry._idleHandle = requestIdleCallback(() => {
+          renderThumbnail(entry.canvas, layer, {
+            width: entry.width,
+            height: entry.height,
+            dpr: entry.dpr,
+          });
+          entry.version = version;
+          entry.dirty = false;
+          entry._idleHandle = null;
+        }, { timeout: 250 });
+      } else {
+        // Fallback
+        setTimeout(() => {
+          renderThumbnail(entry.canvas, layer, {
+            width: entry.width,
+            height: entry.height,
+            dpr: entry.dpr,
+          });
+          entry.version = version;
+          entry.dirty = false;
+          entry._idleHandle = null;
+        }, 0);
+      }
+    };
+
     if (entry.version !== version || entry.dirty) {
-      renderThumbnail(entry.canvas, layer, {
-        width: entry.width,
-        height: entry.height,
-        dpr: entry.dpr,
-      });
-      entry.version = version;
-      entry.dirty = false;
+      // Defer heavy thumbnail rendering to idle time to avoid jank
+      scheduleRender();
     }
 
     return entry.canvas;
@@ -357,15 +383,41 @@ function paintLayerContent(context, layer) {
     context.globalAlpha = 0.85;
 
     layer.strokes.forEach((stroke) => {
-      const points = Array.isArray(stroke?.points) ? stroke.points : [];
-      if (points.length < 2) {
+      if (stroke && stroke.tool === "shape") {
+        // Shapes are rendered as part of base content elsewhere; skip here
         return;
       }
+      const pointsArray = Array.isArray(stroke?.points) ? stroke.points : null;
+      const segments = Array.isArray(stroke?.pointsSegments)
+        ? stroke.pointsSegments
+        : pointsArray
+        ? [pointsArray]
+        : [];
+
+      let totalPoints = 0;
+      segments.forEach((seg) => {
+        totalPoints += Array.isArray(seg) ? seg.length : 0;
+      });
+      if (totalPoints < 2) {
+        return;
+      }
+
       context.beginPath();
-      context.moveTo(points[0].x, points[0].y);
-      for (let index = 1; index < points.length; index += 1) {
-        const point = points[index];
-        context.lineTo(point.x, point.y);
+      let started = false;
+      let prev = null;
+      for (let s = 0; s < segments.length; s += 1) {
+        const seg = segments[s];
+        if (!Array.isArray(seg) || seg.length === 0) continue;
+        for (let i = 0; i < seg.length; i += 1) {
+          const p = seg[i];
+          if (!started) {
+            context.moveTo(p.x, p.y);
+            started = true;
+          } else {
+            context.lineTo(p.x, p.y);
+          }
+          prev = p;
+        }
       }
       context.stroke();
     });
