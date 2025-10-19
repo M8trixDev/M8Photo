@@ -230,7 +230,7 @@ export function initKeyboardShortcuts() {
       return;
     }
 
-    // Tools
+    // Tools and quick toggles
     if (!event.altKey && !event.ctrlKey && !event.metaKey) {
       if (lower === "v") {
         setActiveTool("move");
@@ -250,6 +250,24 @@ export function initKeyboardShortcuts() {
       }
       if (lower === "c") {
         setActiveTool("crop");
+        return;
+      }
+      if (lower === "g") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        try {
+          const vp = store.getState().viewport || {};
+          const visible = (vp.grid && vp.grid.visible !== false) ? true : false;
+          store.updateSlice(
+            "viewport",
+            (viewport) => ({
+              ...viewport,
+              grid: { ...(viewport.grid || {}), visible: !visible },
+            }),
+            { reason: "viewport:grid-toggle", source: "keys" }
+          );
+          if (eventBus) eventBus.emit("viewport:grid", { visible: !visible, source: "keys" });
+        } catch (_) {}
         return;
       }
       // Opacity shortcuts (0-9)

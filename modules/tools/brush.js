@@ -269,9 +269,41 @@ function processStrokePoints(points, options) {
   }
 
   const normalised = points.map(normalisePoint);
-  const sampled = sampleStrokePoints(normalised, options);
+  const coalesced = coalesceDensePoints(normalised);
+  const sampled = sampleStrokePoints(coalesced, options);
   const smoothed = smoothStrokePoints(sampled, options.smoothing);
   return smoothed;
+}
+
+// Merge very dense points occurring within a tiny time window and distance to reduce memory/overdraw
+function coalesceDensePoints(points) {
+  if (!Array.isArray(points) || points.length <= 1) {
+    return points || [];
+  }
+  const merged = [];
+  const TIME_WINDOW_MS = 4; // ~240Hz coalescing window
+  const DIST_EPS = 0.5; // px
+  let last = points[0];
+  for (let i = 1; i < points.length; i += 1) {
+    const p = points[i];
+    const dt = Math.abs((p.timestamp || 0) - (last.timestamp || 0));
+    const dx = p.x - last.x;
+    const dy = p.y - last.y;
+    const dist2 = dx * dx + dy * dy;
+    if (dt <= TIME_WINDOW_MS && dist2 <= DIST_EPS * DIST_EPS) {
+      last = {
+        x: (last.x + p.x) / 2,
+        y: (last.y + p.y) / 2,
+        pressure: (last.pressure + p.pressure) / 2,
+        timestamp: p.timestamp,
+      };
+    } else {
+      merged.push(last);
+      last = p;
+    }
+  }
+  merged.push(last);
+  return merged;
 }
 
 function sampleStrokePoints(points, options) {
@@ -305,17 +337,19 @@ function smoothStrokePoints(points, smoothing) {
   }
 
   const factor = clampNumber(smoothing, 0, 0.95);
+  const pressureFactor = Math.min(0.95, factor + 0.15);
   const smoothed = [points[0]];
 
   for (let index = 1; index < points.length; index += 1) {
     const previous = smoothed[index - 1];
     const target = points[index];
-    const weight = 1 - factor;
+    const weightPos = 1 - factor;
+    const weightPressure = 1 - pressureFactor;
 
     smoothed.push({
-      x: previous.x + (target.x - previous.x) * weight,
-      y: previous.y + (target.y - previous.y) * weight,
-      pressure: previous.pressure + (target.pressure - previous.pressure) * weight,
+      x: previous.x + (target.x - previous.x) * weightPos,
+      y: previous.y + (target.y - previous.y) * weightPos,
+      pressure: previous.pressure + (target.pressure - previous.pressure) * weightPressure,
       timestamp: target.timestamp,
     });
   }

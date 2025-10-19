@@ -167,6 +167,28 @@ function bootAppShell() {
       { once: true }
     );
     registerTeardown(detachRender);
+
+    // Simple FPS monitor and render instrumentation
+    if (hud && typeof performance !== "undefined") {
+      const fpsEl = document.createElement("span");
+      fpsEl.className = "workspace-fps";
+      fpsEl.setAttribute("aria-label", "Frames per second");
+      fpsEl.textContent = "FPS: —";
+      hud.appendChild(fpsEl);
+      let frames = 0;
+      let last = performance.now();
+      const detachFps = eventBus.on("canvas:render", () => {
+        frames += 1;
+        const now = performance.now();
+        if (now - last >= 500) {
+          const fps = Math.round((frames * 1000) / (now - last));
+          fpsEl.textContent = `FPS: ${fps}`;
+          frames = 0;
+          last = now;
+        }
+      });
+      registerTeardown(detachFps);
+    }
   }
 
   initialiseCollapsibles(shellRoot);

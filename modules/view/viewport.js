@@ -78,28 +78,39 @@ export function createViewportController(options = {}) {
     const pan = normalisePan(viewport?.pan);
     const gridState = viewport?.grid || DEFAULT_VIEWPORT_GRID;
 
-    if (container) {
-      container.dataset.zoom = zoom.toFixed(3);
-      container.style.setProperty("--viewport-zoom", zoom.toFixed(3));
-      container.style.setProperty("--viewport-pan-x", `${pan.x}px`);
-      container.style.setProperty("--viewport-pan-y", `${pan.y}px`);
-      container.classList.toggle("is-grid-visible", gridState.visible !== false);
-    }
+    // Batch DOM writes using rAF to reduce layout thrash during continuous pan/zoom
+    if (!syncViewportStyles._rafPending) {
+      syncViewportStyles._rafPending = true;
+      requestAnimationFrame(() => {
+        syncViewportStyles._rafPending = false;
+        const z = clampZoom((currentViewport?.zoom ?? zoom), viewport?.minZoom, viewport?.maxZoom);
+        const p = normalisePan(currentViewport?.pan ?? pan);
+        const g = currentViewport?.grid || gridState;
 
-    if (canvas) {
-      canvas.dataset.zoom = zoom.toFixed(3);
-      canvas.dataset.panX = pan.x.toFixed(2);
-      canvas.dataset.panY = pan.y.toFixed(2);
-    }
+        if (container) {
+          container.dataset.zoom = z.toFixed(3);
+          container.style.setProperty("--viewport-zoom", z.toFixed(3));
+          container.style.setProperty("--viewport-pan-x", `${p.x}px`);
+          container.style.setProperty("--viewport-pan-y", `${p.y}px`);
+          container.classList.toggle("is-grid-visible", g.visible !== false);
+        }
 
-    if (gridOverlay) {
-      gridOverlay.classList.toggle("is-visible", gridState.visible !== false);
-    }
+        if (canvas) {
+          canvas.dataset.zoom = z.toFixed(3);
+          canvas.dataset.panX = p.x.toFixed(2);
+          canvas.dataset.panY = p.y.toFixed(2);
+        }
 
-    if (hudElement) {
-      const zoomPercent = `${Math.round(zoom * 100)}%`;
-      hudElement.textContent = zoomPercent;
-      hudElement.setAttribute("aria-label", `Zoom ${zoomPercent}`);
+        if (gridOverlay) {
+          gridOverlay.classList.toggle("is-visible", g.visible !== false);
+        }
+
+        if (hudElement) {
+          const zoomPercent = `${Math.round(z * 100)}%`;
+          hudElement.textContent = zoomPercent;
+          hudElement.setAttribute("aria-label", `Zoom ${zoomPercent}`);
+        }
+      });
     }
   }
 
@@ -257,6 +268,9 @@ export function createViewportController(options = {}) {
       event.preventDefault();
       const zoom = clampZoom(viewport.zoom ?? 1, viewport.minZoom, viewport.maxZoom);
       const factor = Math.pow(2, -event.deltaY / WHEEL_ZOOM_SENSITIVITY);
+      if (!Number.isFinite(factor) || Math.abs(factor - 1) < 1e-3) {
+        return;
+      }
       const focus = {
         x: typeof event.offsetX === "number" ? event.offsetX : event.clientX - canvas.getBoundingClientRect().left,
         y: typeof event.offsetY === "number" ? event.offsetY : event.clientY - canvas.getBoundingClientRect().top,

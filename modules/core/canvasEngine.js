@@ -609,25 +609,44 @@ export function createCanvasEngine(options = {}) {
       return;
     }
 
+    const debugPerf = typeof window !== "undefined" && Boolean(window.__M8PHOTO_DEBUG_PERF__);
+    let t0 = 0;
+    if (debugPerf && typeof console.time === "function") console.time("canvas:frame");
+    if (debugPerf) t0 = performance.now();
+
     snapshot = captureSnapshot();
     metrics = updateCanvasMetrics();
 
+    if (debugPerf && typeof console.time === "function") console.time("canvas:background");
     context.save();
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.clearRect(0, 0, canvas.width, canvas.height);
     renderBackground(context, metrics, engineOptions);
     context.restore();
+    if (debugPerf && typeof console.timeEnd === "function") console.timeEnd("canvas:background");
 
+    if (debugPerf && typeof console.time === "function") console.time("canvas:layers");
     context.save();
     applyViewTransform(context, snapshot.viewport, metrics);
     renderLayers(context, snapshot, metrics, engineOptions);
     context.restore();
+    if (debugPerf && typeof console.timeEnd === "function") console.timeEnd("canvas:layers");
 
+    if (debugPerf && typeof console.time === "function") console.time("canvas:grid");
     context.save();
     renderGrid(context, snapshot.viewport, metrics);
     context.restore();
+    if (debugPerf && typeof console.timeEnd === "function") console.timeEnd("canvas:grid");
 
     emit("canvas:render", { reason, metrics, snapshot });
+
+    if (debugPerf && typeof console.timeEnd === "function") console.timeEnd("canvas:frame");
+    if (debugPerf) {
+      const dt = performance.now() - t0;
+      if (typeof console.debug === "function") {
+        console.debug(`[M8Photo] frame ${dt.toFixed(2)}ms`);
+      }
+    }
 
     if (!readyEmitted) {
       readyEmitted = true;
@@ -652,7 +671,10 @@ export function createCanvasEngine(options = {}) {
   }
 
   // Cache pre-rendered layer base content (image/gradient/text/shapes) to avoid recomputing on pan/zoom
+  const supportsOffscreen = typeof OffscreenCanvas !== "undefined";
+  const BASE_CACHE_CAPACITY = 32;
   const baseCache = new Map();
+  const baseCacheOrder = [];
 
   function buildBaseCacheKey(layer, dpr) {
     const dims = layer.dimensions || {};
@@ -880,10 +902,25 @@ export function createCanvasEngine(options = {}) {
     const key = buildBaseCacheKey(layer, dpr);
     let entry = baseCache.get(layer.id);
     if (!entry || entry.key !== key) {
-      const offscreen = document.createElement("canvas");
+      const offscreen = supportsOffscreen ? new OffscreenCanvas(1, 1) : document.createElement("canvas");
       drawLayerBaseToCanvas(offscreen, layer, dpr);
       entry = { key, canvas: offscreen };
       baseCache.set(layer.id, entry);
+      // LRU tracking
+      const idx = baseCacheOrder.indexOf(layer.id);
+      if (idx !== -1) baseCacheOrder.splice(idx, 1);
+      baseCacheOrder.push(layer.id);
+      if (baseCacheOrder.length > BASE_CACHE_CAPACITY) {
+        const evictId = baseCacheOrder.shift();
+        if (typeof evictId !== "undefined") {
+          baseCache.delete(evictId);
+        }
+      }
+    } else {
+      // Touch LRU order
+      const idx = baseCacheOrder.indexOf(layer.id);
+      if (idx !== -1) baseCacheOrder.splice(idx, 1);
+      baseCacheOrder.push(layer.id);
     }
     return entry.canvas;
   }
