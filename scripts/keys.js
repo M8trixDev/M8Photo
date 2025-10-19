@@ -248,6 +248,18 @@ export function initKeyboardShortcuts() {
         setActiveTool("text");
         return;
       }
+      if (lower === "s") {
+        setActiveTool("select");
+        return;
+      }
+      if (lower === "f") {
+        setActiveTool("fill");
+        return;
+      }
+      if (lower === "u") {
+        setActiveTool("shape");
+        return;
+      }
       if (lower === "c") {
         setActiveTool("crop");
         return;
