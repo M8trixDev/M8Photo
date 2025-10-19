@@ -7,6 +7,7 @@ import { initPanels } from "./panels.js";
 import { initTools } from "../modules/tools/index.js";
 import { createCanvasEngine } from "../modules/core/canvasEngine.js";
 import { createViewportController } from "../modules/view/viewport.js";
+import { initKeyboardShortcuts } from "./keys.js";
 
 const globalScope = typeof window !== "undefined" ? window : globalThis;
 let coreExposed = false;
@@ -122,6 +123,11 @@ function bootAppShell() {
 
   initToolbar(shellRoot);
   initPanels(shellRoot);
+
+  const disposeKeys = initKeyboardShortcuts();
+  if (typeof disposeKeys === 'function') {
+    registerTeardown(disposeKeys);
+  }
 
   const stage = shellRoot.querySelector("[data-viewport-stage]");
   const canvas = stage?.querySelector("#workspace-canvas");

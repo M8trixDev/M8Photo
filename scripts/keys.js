@@ -1,0 +1,201 @@
+import { store } from "../modules/core/store.js";
+import { history } from "../modules/core/history.js";
+import { eventBus } from "../modules/core/events.js";
+import { tools } from "../modules/tools/index.js";
+import { layerManager } from "../modules/layers/layerManager.js";
+import { clampZoom } from "../modules/view/viewport.js";
+
+const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+
+function isInputLike(target) {
+  const el = target;
+  if (!el || !(el instanceof HTMLElement)) return false;
+  const tag = el.tagName;
+  const editable = el.getAttribute("contenteditable");
+  return (
+    tag === "INPUT" ||
+    tag === "TEXTAREA" ||
+    (editable && editable !== "false") ||
+    el.closest("[contenteditable=true]")
+  );
+}
+
+function getViewport() {
+  return store.getState().viewport || {};
+}
+
+function updateZoom(nextZoom, meta = {}) {
+  const vp = getViewport();
+  const clamped = clampZoom(nextZoom, vp.minZoom, vp.maxZoom);
+  store.updateSlice(
+    "viewport",
+    (viewport) => ({ ...viewport, zoom: clamped }),
+    { reason: "viewport:zoom", source: meta.source || "keys" }
+  );
+  if (eventBus) eventBus.emit("viewport:zoom", { zoom: clamped, source: meta.source || "keys" });
+}
+
+function resetZoom(meta = {}) {
+  store.updateSlice(
+    "viewport",
+    (viewport) => ({ ...viewport, zoom: 1, pan: { x: 0, y: 0 } }),
+    { reason: "viewport:reset", source: meta.source || "keys" }
+  );
+  if (eventBus) eventBus.emit("viewport:reset", { zoom: 1, source: meta.source || "keys" });
+}
+
+function panBy(dx, dy, meta = {}) {
+  const vp = getViewport();
+  const pan = vp.pan || { x: 0, y: 0 };
+  const next = { x: pan.x + dx, y: pan.y + dy };
+  store.updateSlice(
+    "viewport",
+    (viewport) => ({ ...viewport, pan: next }),
+    { reason: "viewport:pan", source: meta.source || "keys" }
+  );
+  if (eventBus) eventBus.emit("viewport:pan", { pan: next, source: meta.source || "keys" });
+}
+
+function setActiveTool(id) {
+  tools.setActive(id, { source: "keys" });
+}
+
+function setActiveLayerOpacity(percent) {
+  const id = store.getState().layers?.active;
+  if (!id) return;
+  const value = Math.max(0, Math.min(1, percent / 100));
+  layerManager.updateLayer(id, { opacity: value }, { source: "keys" });
+}
+
+let opacityBuffer = "";
+let lastOpacityTime = 0;
+const OPACITY_WINDOW = 350; // ms
+
+function handleOpacityDigit(key) {
+  const now = Date.now();
+  if (now - lastOpacityTime > OPACITY_WINDOW) {
+    opacityBuffer = "";
+  }
+  lastOpacityTime = now;
+  opacityBuffer += String(key);
+  if (opacityBuffer.length === 1) {
+    if (key === "0") {
+      setActiveLayerOpacity(100);
+      opacityBuffer = "";
+      return true;
+    }
+    setActiveLayerOpacity(parseInt(key, 10) * 10);
+    return true;
+  }
+  if (opacityBuffer.length >= 2) {
+    const val = Math.min(100, Math.max(0, parseInt(opacityBuffer, 10)));
+    setActiveLayerOpacity(val);
+    opacityBuffer = "";
+    return true;
+  }
+  return false;
+}
+
+export function initKeyboardShortcuts() {
+  function onKeyDown(event) {
+    if (!event) return;
+
+    // Avoid interfering with text inputs/contenteditable
+    if (isInputLike(event.target)) {
+      return;
+    }
+
+    const key = event.key;
+    const lower = typeof key === "string" ? key.toLowerCase() : "";
+    const isMod = isMac ? event.metaKey : event.ctrlKey;
+
+    // Undo / Redo
+    if (isMod && lower === "z" && !event.shiftKey) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      history.undo();
+      return;
+    }
+    if ((isMod && lower === "z" && event.shiftKey) || (!isMac && isMod && lower === "y")) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      history.redo();
+      return;
+    }
+
+    // Zoom
+    if (isMod && (key === "+" || key === "=")) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const vp = getViewport();
+      updateZoom((vp.zoom ?? 1) * 1.1, { source: "keys" });
+      return;
+    }
+    if (isMod && (key === "-" || key === "_")) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const vp = getViewport();
+      updateZoom((vp.zoom ?? 1) / 1.1, { source: "keys" });
+      return;
+    }
+    if (isMod && key === "0") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      resetZoom({ source: "keys" });
+      return;
+    }
+
+    // Pan with arrow keys
+    if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(key)) {
+      const step = event.shiftKey ? 40 : 20;
+      let dx = 0;
+      let dy = 0;
+      if (key === "ArrowLeft") dx = -step;
+      if (key === "ArrowRight") dx = step;
+      if (key === "ArrowUp") dy = -step;
+      if (key === "ArrowDown") dy = step;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      panBy(dx, dy, { source: "keys" });
+      return;
+    }
+
+    // Tools
+    if (!event.altKey && !event.ctrlKey && !event.metaKey) {
+      if (lower === "v") {
+        setActiveTool("move");
+        return;
+      }
+      if (lower === "b") {
+        setActiveTool("brush");
+        return;
+      }
+      if (lower === "e") {
+        setActiveTool("eraser");
+        return;
+      }
+      // Opacity shortcuts (0-9)
+      if (lower >= "0" && lower <= "9") {
+        if (handleOpacityDigit(lower)) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+      }
+    }
+  }
+
+  function onKeyUp(event) {
+    // Reserved for future: spacebar pan end etc.
+  }
+
+  window.addEventListener("keydown", onKeyDown, { passive: false });
+  window.addEventListener("keyup", onKeyUp, { passive: true });
+
+  return () => {
+    window.removeEventListener("keydown", onKeyDown);
+    window.removeEventListener("keyup", onKeyUp);
+  };
+}
+
+export default { initKeyboardShortcuts };
