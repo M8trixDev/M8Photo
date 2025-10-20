@@ -2,7 +2,7 @@ import { store } from "../core/store.js";
 import { history } from "../core/history.js";
 import { eventBus } from "../core/events.js";
 import { tools } from "../tools/index.js";
-import { openImportDialog, openExportDialog } from "../io/importExport.js";
+import { openImportDialog, openExportDialog, openImportM8SDialog, downloadM8S } from "../io/importExport.js";
 import { layerManager } from "../layers/layerManager.js";
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
@@ -112,6 +112,14 @@ function exec(command) {
     }
     case "file:save": {
       openExportDialog().catch(() => {});
+      break;
+    }
+    case "file:open.m8s": {
+      openImportM8SDialog().catch(() => {});
+      break;
+    }
+    case "file:save.m8s": {
+      downloadM8S().catch(() => {});
       break;
     }
     case "edit:undo": {
@@ -251,7 +259,9 @@ const MENU_MODEL = [
       { id: "file:new", label: "New Project…", shortcut: `Mod+N` },
       { id: "file:open", label: "Open…", shortcut: `Mod+O` },
       { type: "separator" },
-      { id: "file:save", label: "Save As…", shortcut: `Mod+Shift+S` },
+      { id: "file:save", label: "Export…", shortcut: `Mod+Shift+S` },
+      { id: "file:save.m8s", label: "Save Project (.m8s)" },
+      { id: "file:open.m8s", label: "Open Project (.m8s)…" },
       { id: "io:import", label: "Import Assets…" },
     ],
   },

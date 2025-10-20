@@ -388,6 +388,80 @@ export async function downloadExport(options = {}) {
   return { fileName, ...result };
 }
 
+// .m8s project export/import (single JSON file with embedded DataURLs)
+export async function exportProjectAsM8S() {
+  const state = store.getSnapshot();
+  const entities = state.layers?.entities || {};
+  const assetMap = {};
+  Object.keys(entities).forEach((id) => {
+    const layer = entities[id];
+    const assetId = layer?.metadata?.imageAssetId;
+    if (!assetId) return;
+    const canvas = assetStore.getCanvas(assetId);
+    if (!canvas) return;
+    try {
+      const dataUrl = canvas.toDataURL("image/png", 0.92);
+      assetMap[assetId] = { mime: "image/png", dataUrl };
+    } catch (_) {}
+  });
+  const payload = { version: 1, project: state.project, viewport: state.viewport, layers: state.layers, selection: state.selection, assets: assetMap };
+  const json = JSON.stringify(payload);
+  const blob = new Blob([json], { type: "application/json" });
+  return { blob, payload };
+}
+
+export async function downloadM8S(fileName) {
+  const name = normaliseFileName(fileName || (store.getState().project?.name || "Untitled"), "m8s");
+  const { blob } = await exportProjectAsM8S();
+  const url = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  } finally {
+    setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(_){}} , 1000);
+  }
+}
+
+export async function openImportM8SDialog(){
+  const input = document.createElement('input'); input.type = 'file'; input.accept = '.m8s,application/json'; input.multiple=false; input.style.display='none';
+  return new Promise((resolve, reject)=>{
+    input.addEventListener('change', async ()=>{
+      const file = input.files && input.files[0]; input.remove(); if (!file) { reject(new Error('No file selected')); return; }
+      try { const text = await file.text(); const data = JSON.parse(text); await importM8S(data); resolve({ ok: true }); } catch (e){ console.error(e); window.alert('Invalid project file'); reject(e); }
+    }, { once: true });
+    document.body.appendChild(input); input.click();
+  });
+}
+
+export async function importM8S(data){
+  if (!data || typeof data !== 'object') throw new Error('Invalid data');
+  const assets = data.assets || {};
+  const idMap = {};
+  // Recreate assets
+  const keys = Object.keys(assets);
+  for (let i=0; i<keys.length; i+=1){
+    const key = keys[i]; const rec = assets[key];
+    try {
+      const img = await new Promise((res, rej)=>{ const im = new Image(); im.onload=()=>res(im); im.onerror=()=>rej(new Error('image')); im.src = rec.dataUrl; });
+      const canvas = document.createElement('canvas'); canvas.width = img.width; canvas.height = img.height; const ctx = canvas.getContext('2d'); ctx.drawImage(img,0,0);
+      const newId = assetStore.registerCanvas(canvas, { prefix: 'm8s' });
+      idMap[key] = newId;
+    } catch (_) {}
+  }
+  // Replace layer asset ids
+  const layers = JSON.parse(JSON.stringify(data.layers || {}));
+  const entities = layers.entities || {};
+  Object.keys(entities).forEach((id)=>{
+    const meta = entities[id].metadata || {}; const old = meta.imageAssetId; if (old && idMap[old]) { entities[id].metadata.imageAssetId = idMap[old]; }
+  });
+  store.replace({
+    ...store.getSnapshot(),
+    project: data.project || store.getState().project,
+    viewport: data.viewport || store.getState().viewport,
+    layers,
+    selection: data.selection || store.getState().selection,
+  }, { reason: 'io:import-m8s' });
+}
+
 export async function openExportDialog() {
   const projectName = store.getState().project?.name || "Untitled";
   const baseSize = store.getState().viewport?.size || { width: 1280, height: 720 };

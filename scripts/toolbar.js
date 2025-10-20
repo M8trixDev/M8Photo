@@ -1,10 +1,11 @@
 import { openExportDialog } from "../modules/io/importExport.js";
 import { initMenuBar } from "../modules/ui/menu.js";
+import { openShortcutsEditor } from "./shortcutsEditor.js";
 
 const QUICK_ACTIONS = [
   { label: "Export", icon: "⇣" },
-  { label: "Share", icon: "⇪" },
-  { label: "Compare", icon: "≍" },
+  { label: "Command", icon: "⌘K", command: "ui.commandPalette" },
+  { label: "Shortcuts", icon: "⌨", command: "ui.shortcuts" },
 ];
 
 const DENSITY_KEY = "m8photo.ui.density";
@@ -40,7 +41,9 @@ export function initToolbar(scope = document) {
 
 function renderQuickActions() {
   return QUICK_ACTIONS.map((action) => {
-    const commandAttr = action.label === "Export" ? ' data-command="io.export"' : "";
+    let commandAttr = "";
+    if (action.label === "Export") commandAttr = ' data-command="io.export"';
+    if (action.command) commandAttr = ` data-command="${action.command}"`;
     return `
       <button class="toolbar__action" type="button"${commandAttr}>
         <span class="toolbar__action-icon" aria-hidden="true">${action.icon}</span>
@@ -100,4 +103,10 @@ function bindToolbarInteractions(toolbarEl) {
       if (label) label.textContent = next === "compact" ? "Compact" : "Comfort";
     });
   }
+
+  // Extra quick actions
+  const cmdBtn = toolbarEl.querySelector('[data-command="ui.commandPalette"]');
+  cmdBtn?.addEventListener('click', ()=> { try { window.M8PhotoCmdk && window.M8PhotoCmdk.open(); } catch (_) {} });
+  const scBtn = toolbarEl.querySelector('[data-command="ui.shortcuts"]');
+  scBtn?.addEventListener('click', ()=> { try { openShortcutsEditor(); } catch (_) {} });
 }

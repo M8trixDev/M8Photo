@@ -9,6 +9,9 @@ import { createCropTool } from "./crop.js";
 import { createFillTool } from "./fill.js";
 import { createShapeTool } from "./shape.js";
 import { createSelectTool } from "./select.js";
+import { createHandTool } from "./hand.js";
+import { createZoomTool } from "./zoom.js";
+import { createEyedropperTool } from "./eyedropper.js";
 
  const POINTER_TOOL_ID = "pointer";
   const registry = new Map();
@@ -77,6 +80,15 @@ export function initTools() {
 
   const selectTool = createSelectTool(context);
   registerTool(selectTool);
+
+  const handTool = createHandTool(context);
+  registerTool(handTool);
+
+  const zoomTool = createZoomTool(context);
+  registerTool(zoomTool);
+
+  const eyedropperTool = createEyedropperTool(context);
+  registerTool(eyedropperTool);
 
   initialised = true;
 

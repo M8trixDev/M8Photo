@@ -4,8 +4,8 @@
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
-  "theme_color": "#1e1e1e",
-  "background_color": "#101010",
+  "theme_color": "#121316",
+  "background_color": "#0F1012",
   "description": "Offline-capable workspace shell for the M8 Studio creative suite.",
   "icons": [
     {

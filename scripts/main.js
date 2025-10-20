@@ -10,6 +10,8 @@ import { createViewportController } from "../modules/view/viewport.js";
 import { initKeyboardShortcuts } from "./keys.js";
 import { initFilters } from "../modules/filters/index.js";
 import { initSidebar } from "./sidebar.js";
+import { initToolPalette } from "./palette.js";
+import { initCommandPalette } from "./commandPalette.js";
 
 const globalScope = typeof window !== "undefined" ? window : globalThis;
 let coreExposed = false;
@@ -126,6 +128,8 @@ function bootAppShell() {
   initToolbar(shellRoot);
   initPanels(shellRoot);
   initSidebar(shellRoot);
+  initToolPalette(shellRoot);
+  initCommandPalette();
   // Initialise filters system (menus and dialogs)
   try { initFilters(); } catch (e) { console.warn("Filters init failed", e); }
 
