@@ -806,8 +806,21 @@ body[data-density="compact"] .properties-field--range {
 }
 .tool-btn:hover { background: var(--color-accent-soft); color: var(--color-text-primary); transform: translateY(-1px); border-color: rgba(255,255,255,0.18); }
 .tool-btn[aria-pressed="true"], .tool-btn.is-active { background: var(--color-accent-soft); color: var(--color-text-primary); box-shadow: var(--shadow-subtle); }
+.tool-btn:focus-visible { outline: 2px solid rgba(96, 178, 255, 0.75); outline-offset: 2px; }
 .tool-btn__icon { font-size: 1.05rem; line-height: 1; }
 .tool-btn .tool-kbd { position: absolute; bottom: -0.35rem; right: -0.35rem; font-size: 0.65rem; opacity: 0.65; }
+
+/* Placeholder popover for subtools */
+.tool-subtools-popover {
+  padding: 0.35rem 0.55rem;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  box-shadow: var(--shadow-subtle);
+  font-size: 0.75rem;
+  pointer-events: none;
+}
 
 /* Simple tooltip */
 .tool-btn[data-tip]:hover::after {
@@ -824,6 +837,12 @@ body[data-density="compact"] .properties-field--range {
   padding: 0.2rem 0.45rem;
   box-shadow: var(--shadow-subtle);
   z-index: 10;
+}
+
+/* Ensure larger hit targets on touch devices */
+@media (pointer: coarse) {
+  .tool-palette { grid-auto-rows: 44px; }
+  .tool-btn { width: 44px; height: 44px; }
 }
 
 @media (max-width: 720px) {

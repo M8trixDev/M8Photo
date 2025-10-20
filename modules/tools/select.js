@@ -575,6 +575,8 @@ export function createSelectTool(context = {}) {
   let pointerDownHandler = null;
   let pointerMoveHandler = null;
   let pointerUpHandler = null;
+  let keyHandler = null;
+  let cancelListener = null;
   let viewportListenerCleanup = [];
 
   function attachPointer() {
@@ -619,6 +621,21 @@ export function createSelectTool(context = {}) {
     canvas.addEventListener("pointermove", pointerMoveHandler, { capture: true });
     canvas.addEventListener("pointerup", pointerUpHandler, { capture: true });
 
+    // Cancel current drag on Escape or tools:cancel
+    keyHandler = (e) => {
+      if (e && e.key === "Escape") {
+        drag = null;
+        const { box } = getOverlayElements();
+        if (box) box.style.display = "none";
+      }
+    };
+    try { window.addEventListener("keydown", keyHandler, { passive: true }); } catch (_) { window.addEventListener("keydown", keyHandler); }
+    cancelListener = eventBus.on && eventBus.on("tools:cancel", () => {
+      drag = null;
+      const { box } = getOverlayElements();
+      if (box) box.style.display = "none";
+    });
+
     viewportListenerCleanup.push(eventBus.on("viewport:pan", () => renderOverlay()));
     viewportListenerCleanup.push(eventBus.on("viewport:zoom", () => renderOverlay()));
     viewportListenerCleanup.push(eventBus.on("viewport:reset", () => renderOverlay()));
@@ -636,6 +653,10 @@ export function createSelectTool(context = {}) {
     pointerDownHandler = null;
     pointerMoveHandler = null;
     pointerUpHandler = null;
+    if (keyHandler) { try { window.removeEventListener("keydown", keyHandler); } catch (_) {} }
+    keyHandler = null;
+    try { if (typeof cancelListener === "function") cancelListener(); } catch (_) {}
+    cancelListener = null;
     viewportListenerCleanup.forEach((off) => { try { if (typeof off === "function") off(); } catch (_) {} });
     viewportListenerCleanup = [];
     // Keep overlay visible if selection exists
