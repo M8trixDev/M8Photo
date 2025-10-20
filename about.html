@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>M8 Studio — Diagnostics</title>
+    <link rel="stylesheet" href="styles/theme.css" />
+    <link rel="stylesheet" href="styles/layout.css" />
+    <link rel="stylesheet" href="styles/components.css" />
+    <style>
+      body{display:grid;place-items:center;min-height:100vh;background:var(--color-surface-raised);color:var(--color-text-primary)}
+      .card{min-width:min(880px, 92vw);max-width:92vw;background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px;box-shadow:var(--shadow-soft);}
+      .card__header{padding:.85rem 1rem;border-bottom:1px solid var(--color-border);display:flex;justify-content:space-between;align-items:center}
+      .card__body{padding:.85rem 1rem;display:grid;gap:.5rem}
+      .kv{display:grid;grid-template-columns: 220px 1fr;gap:.5rem;align-items:center}
+      .muted{color:var(--color-text-secondary)}
+      .pill{display:inline-block;padding:.2rem .45rem;border-radius:999px;border:1px solid var(--color-border);background:var(--color-surface-highlight);}
+    </style>
+  </head>
+  <body>
+    <main class="card" role="main" aria-label="Diagnostics">
+      <header class="card__header">
+        <h1 style="margin:0;font-size:1.1rem;letter-spacing:.04em;text-transform:uppercase">Diagnostics / About</h1>
+        <a href="index.html" class="pill">Back to Studio</a>
+      </header>
+      <section class="card__body" id="diag">
+        <div class="kv"><div class="muted">User Agent</div><div id="ua"></div></div>
+        <div class="kv"><div class="muted">Platform</div><div id="plat"></div></div>
+        <div class="kv"><div class="muted">Canvas</div><div id="canvas"></div></div>
+        <div class="kv"><div class="muted">WebGL</div><div id="webgl"></div></div>
+        <div class="kv"><div class="muted">Device Pixel Ratio</div><div id="dpr"></div></div>
+        <div class="kv"><div class="muted">FPS (approx.)</div><div id="fps"></div></div>
+        <div class="kv"><div class="muted">Service Worker</div><div id="sw"></div></div>
+      </section>
+    </main>
+    <script type="module">
+      import { isWebGLAvailable } from './modules/gl/index.js';
+      const $ = (id)=> document.getElementById(id);
+      $('ua').textContent = navigator.userAgent;
+      $('plat').textContent = navigator.platform || 'unknown';
+      $('dpr').textContent = String(window.devicePixelRatio || 1);
+      $('webgl').textContent = isWebGLAvailable() ? 'Available' : 'Unavailable';
+      // Canvas support
+      try { const c = document.createElement('canvas'); const ok = !!(c.getContext && c.getContext('2d')); $('canvas').textContent = ok ? 'Canvas2D OK' : 'Unavailable'; } catch(_) { $('canvas').textContent = 'Unavailable'; }
+      // FPS sampler
+      (function(){
+        const span = $('fps'); let frames = 0; let last = performance.now();
+        function tick(){ frames += 1; const now = performance.now(); if (now - last > 1000){ const fps = Math.round(frames * 1000 / (now - last)); span.textContent = `${fps} fps`; frames = 0; last = now; } requestAnimationFrame(tick); }
+        requestAnimationFrame(tick);
+      })();
+      // SW
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistration().then(reg => { $('sw').textContent = reg ? (reg.active ? 'Active' : 'Registered') : 'Not registered'; }).catch(()=>{ $('sw').textContent = 'Not registered'; });
+      } else { $('sw').textContent = 'Not supported'; }
+    </script>
+  </body>
+</html>

@@ -1,4 +1,4 @@
-const CACHE_NAME = "m8studio-shell-v0.1.0";
+const CACHE_NAME = "m8studio-shell-v0.2.0";
 const OFFLINE_DOCUMENT = "offline.html";
 const OFFLINE_IMAGE = "assets/icons/icon-192.png";
 
@@ -59,6 +59,10 @@ const SHELL_ASSETS = [
   "assets/template-thumbs/youtube-banner.svg",
   "assets/template-thumbs/twitter-header.svg",
   "assets/template-thumbs/facebook-post.svg",
+  "modules/gl/index.js",
+  "modules/gl/shaders.js",
+  "modules/gl/util.js",
+  "about.html",
 ];
 
 self.addEventListener("install", (event) => {
