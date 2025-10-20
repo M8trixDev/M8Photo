@@ -4,6 +4,7 @@ import { eventBus } from "../modules/core/events.js";
 import { tools } from "../modules/tools/index.js";
 import { layerManager } from "../modules/layers/layerManager.js";
 import { clampZoom } from "../modules/view/viewport.js";
+import { resolveActionFromKey } from "./shortcuts.js";
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
 
@@ -232,6 +233,22 @@ export function initKeyboardShortcuts() {
 
     // Tools and quick toggles
     if (!event.altKey && !event.ctrlKey && !event.metaKey) {
+      // Customisable shortcuts map
+      const action = resolveActionFromKey(lower);
+      if (action) {
+        if (action.startsWith('tool.')) {
+          const id = action.split('.')[1];
+          if (action === 'tool.select.marquee' || action === 'tool.select.lasso') {
+            setActiveTool('select');
+            // Store the last chosen lasso/marquee mode for downstream tools
+            try { tools.updateOptions('select', { lassoMode: action.endsWith('lasso') ? 'lasso' : 'rect' }, { source: 'keys' }); } catch(_){}
+          } else {
+            setActiveTool(id);
+          }
+          return;
+        }
+      }
+
       if (lower === "v") {
         setActiveTool("move");
         return;
@@ -262,6 +279,18 @@ export function initKeyboardShortcuts() {
       }
       if (lower === "c") {
         setActiveTool("crop");
+        return;
+      }
+      if (lower === "i") {
+        setActiveTool("eyedropper");
+        return;
+      }
+      if (lower === "h") {
+        setActiveTool("hand");
+        return;
+      }
+      if (lower === "z") {
+        setActiveTool("zoom");
         return;
       }
       if (lower === "g") {
