@@ -1,4 +1,4 @@
-const CACHE_NAME = "m8studio-shell-v0.2.0";
+const CACHE_NAME = "m8studio-shell-v0.2.1";
 const OFFLINE_DOCUMENT = "offline.html";
 const OFFLINE_IMAGE = "assets/icons/icon-192.png";
 
@@ -18,6 +18,7 @@ const SHELL_ASSETS = [
   "scripts/commandPalette.js",
   "scripts/shortcuts.js",
   "scripts/shortcutsEditor.js",
+  "scripts/sidebar.js",
   "modules/core/store.js",
   "modules/core/history.js",
   "modules/core/events.js",
@@ -33,9 +34,15 @@ const SHELL_ASSETS = [
   "modules/tools/hand.js",
   "modules/tools/zoom.js",
   "modules/tools/eyedropper.js",
+  "modules/tools/select.js",
+  "modules/tools/fill.js",
+  "modules/tools/shape.js",
+  "modules/tools/text.js",
+  "modules/tools/crop.js",
   "modules/ui/menu.js",
   "modules/ui/panels/layersPanel.js",
   "modules/ui/panels/propertiesPanel.js",
+  "modules/ui/panels/colorPanel.js",
   "modules/dev/harness.js",
   "modules/persist/indexeddb.js",
   "modules/persist/autosave.js",
@@ -43,6 +50,12 @@ const SHELL_ASSETS = [
   "modules/io/exif.js",
   "modules/io/importExport.js",
   "modules/io/templates.js",
+  "modules/filters/index.js",
+  "modules/filters/blur.js",
+  "modules/filters/brightnessContrast.js",
+  "modules/filters/grayscale.js",
+  "modules/filters/invert.js",
+  "modules/filters/saturationHue.js",
   "modules/ui/dialogs/templatesDialog.js",
   "modules/ui/dialogs/exportDialog.js",
   "modules/ui/dialogs/brightnessContrastDialog.js",
