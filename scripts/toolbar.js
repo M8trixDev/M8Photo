@@ -73,9 +73,13 @@ function getSavedDensity() {
 
 function applyDensity(mode) {
   const m = mode === "comfort" ? "comfort" : "compact";
-  const root = document.documentElement || document.body;
-  if (root) {
-    root.setAttribute("data-density", m);
+  const html = document.documentElement;
+  const body = document.body;
+  if (html) {
+    html.setAttribute("data-density", m);
+  }
+  if (body) {
+    body.setAttribute("data-density", m);
   }
 }
 
