@@ -244,6 +244,10 @@ function exec(command) {
       if (select && typeof select.fill === "function") select.fill();
       break;
     }
+    case "help:about": {
+      try { window.location.href = "about.html"; } catch (_) {}
+      break;
+    }
     default: {
       if (eventBus) eventBus.emit("command:execute", { command });
       break;
@@ -337,6 +341,13 @@ const MENU_MODEL = [
       { type: "separator" },
       { id: "select:clear", label: "Clear Selection", shortcut: `Shift+Delete`, enabled: () => Boolean(store.getState().selection?.region) },
       { id: "select:fill", label: "Fill Selection", shortcut: `Shift+F5`, enabled: () => Boolean(store.getState().selection?.region) },
+    ],
+  },
+  {
+    id: "help",
+    label: "Help",
+    items: [
+      { id: "help:about", label: "Diagnostics / About" },
     ],
   },
 ];

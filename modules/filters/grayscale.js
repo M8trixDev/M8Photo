@@ -1,6 +1,8 @@
 // Grayscale filter with adjustable amount
 // Options: { amount: 0..100 }
 
+import { tryApplyGL } from "../gl/index.js";
+
 export function applyToImageData(imageData, options = {}) {
   if (!imageData || !imageData.data) return imageData;
   const amt = Math.max(0, Math.min(100, options.amount == null ? 100 : options.amount)) / 100; // 0..1
@@ -32,6 +34,13 @@ export function applyToImageData(imageData, options = {}) {
 
 export function applyToCanvas(sourceCanvas, options = {}) {
   if (!sourceCanvas) return null;
+
+  // Use WebGL path for full grayscale when available
+  if (options.amount == null || Number(options.amount) >= 100) {
+    const glResult = tryApplyGL(sourceCanvas, 'grayscale', options);
+    if (glResult) return glResult;
+  }
+
   const w = sourceCanvas.width | 0;
   const h = sourceCanvas.height | 0;
   const canvas = document.createElement("canvas");

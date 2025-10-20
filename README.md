@@ -1,6 +1,6 @@
 # M8 Studio
 
-[![Version](https://img.shields.io/badge/version-v0.1.0-blue)](https://github.com/M8trixDev/M8Photo/releases/tag/v0.1.0) [![PWA](https://img.shields.io/badge/PWA-installable-success)](https://M8trixDev.github.io/M8Photo/)
+[![Version](https://img.shields.io/badge/version-v0.2.0-blue)](https://github.com/M8trixDev/M8Photo/releases/tag/v0.2.0) [![PWA](https://img.shields.io/badge/PWA-installable-success)](https://M8trixDev.github.io/M8Photo/)
 
 Live: https://M8trixDev.github.io/M8Photo/
 
@@ -17,6 +17,17 @@ The app runs entirely in the browser using modern web platform APIs. No build st
 - Session autosave and restore using IndexedDB
 - Modular tools, layers, filters, and an accessible menubar
 
+
+## What's new in v0.2.0
+
+- Compact density mode across UI (default), with canvas filling the viewport beside a resizable right sidebar
+- Left vertical tool palette with tooltips, active highlight, and full keyboard shortcuts
+- Command palette (Ctrl/Cmd+K) and a shortcuts editor with conflict detection and persistence
+- Selection overlays with marching ants and selection actions (select all, clear, fill) wired into history
+- WebGL-accelerated filter path with Canvas2D fallback (invert, grayscale, hue/saturation, brightness/contrast; blur falls back)
+- Eyedropper wired into the Color panel; Hand and Zoom tools map to pan/zoom (Alt or right-click to zoom out)
+- Service worker polish: versioned caches and a “New version available” toast with one‑click reload
+- Project format: native .m8s export/import (JSON + embedded assets)
 
 ## Tech stack
 

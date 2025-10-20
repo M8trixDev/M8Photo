@@ -265,8 +265,74 @@ async function registerServiceWorker() {
     return;
   }
 
+  function showUpdateToast(reg) {
+    try {
+      let overlay = document.querySelector('.m8-sw-update');
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.className = 'm8-sw-update';
+        overlay.innerHTML = `
+          <div class="m8-sw-toast" role="status" aria-live="polite">
+            <div class="m8-sw-text">A new version is available.</div>
+            <div class="m8-sw-actions">
+              <button type="button" class="m8-sw-reload">Reload</button>
+              <button type="button" class="m8-sw-dismiss" aria-label="Dismiss">✕</button>
+            </div>
+          </div>`;
+        const style = document.createElement('style');
+        style.textContent = `
+          .m8-sw-update{position:fixed;left:0;right:0;bottom:0;display:grid;place-items:center;pointer-events:none;z-index:9999}
+          .m8-sw-toast{pointer-events:auto;display:flex;gap:.6rem;align-items:center;background:var(--color-surface-raised, #20242c);color:var(--color-text-primary, #fff);border:1px solid var(--color-border, rgba(255,255,255,.16));border-radius:10px;padding:.6rem .75rem;margin:.75rem;box-shadow:0 6px 24px rgba(0,0,0,.3)}
+          .m8-sw-actions{display:flex;gap:.4rem}
+          .m8-sw-toast button{background:var(--color-surface-highlight, #2a2f39);color:inherit;border:1px solid var(--color-border, rgba(255,255,255,.16));border-radius:8px;padding:.35rem .6rem;cursor:pointer}
+          .m8-sw-toast button:hover{background:var(--color-accent-soft, rgba(255,255,255,.08));}
+        `;
+        document.head.appendChild(style);
+        document.body.appendChild(overlay);
+      }
+      overlay.style.display = 'grid';
+
+      const reloadBtn = overlay.querySelector('.m8-sw-reload');
+      const dismissBtn = overlay.querySelector('.m8-sw-dismiss');
+      const reload = () => {
+        try {
+          const waiting = reg && reg.waiting;
+          if (waiting) waiting.postMessage({ type: 'SKIP_WAITING' });
+          // When the controller changes, reload to get the new version
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            window.location.reload();
+          }, { once: true });
+        } catch (_) {
+          window.location.reload();
+        }
+      };
+      const hide = () => { overlay.style.display = 'none'; };
+      reloadBtn?.addEventListener('click', reload, { once: true });
+      dismissBtn?.addEventListener('click', hide, { once: true });
+    } catch (e) {
+      // ignore
+    }
+  }
+
   try {
-    await navigator.serviceWorker.register("sw.js");
+    const registration = await navigator.serviceWorker.register("sw.js");
+
+    if (registration.waiting) {
+      showUpdateToast(registration);
+    }
+
+    registration.addEventListener('updatefound', () => {
+      const installing = registration.installing;
+      if (!installing) return;
+      installing.addEventListener('statechange', () => {
+        if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+          showUpdateToast(registration);
+        }
+      });
+    });
+
+    // Periodically check for updates in the background
+    try { setInterval(() => registration.update().catch(()=>{}), 60_000); } catch (_) {}
   } catch (error) {
     console.warn("Service worker registration failed", error);
   }
