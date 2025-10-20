@@ -98,6 +98,8 @@ function handleOpacityDigit(key) {
 }
 
 export function initKeyboardShortcuts() {
+  let spacePanningActive = false;
+  let toolBeforeSpace = null;
   function onKeyDown(event) {
     if (!event) return;
 
@@ -109,6 +111,23 @@ export function initKeyboardShortcuts() {
     const key = event.key;
     const lower = typeof key === "string" ? key.toLowerCase() : "";
     const isMod = isMac ? event.metaKey : event.ctrlKey;
+
+    // Temporary Hand pan with Space
+    const isSpace = key === " " || key === "Spacebar" || lower === " " || lower === "space";
+    if (isSpace && !spacePanningActive) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      toolBeforeSpace = tools.getActive();
+      setActiveTool("hand");
+      spacePanningActive = true;
+      return;
+    }
+
+    // ESC to signal cancel to active tool (viewport may also reset)
+    if (key === "Escape") {
+      try { eventBus.emit("tools:cancel", {}); } catch (_) {}
+      // do not return; allow other handlers to run
+    }
 
     // Undo / Redo
     if (isMod && lower === "z" && !event.shiftKey) {
@@ -323,7 +342,19 @@ export function initKeyboardShortcuts() {
   }
 
   function onKeyUp(event) {
-    // Reserved for future: spacebar pan end etc.
+    const key = event.key;
+    const lower = typeof key === "string" ? key.toLowerCase() : "";
+    const isSpace = key === " " || key === "Spacebar" || lower === " " || lower === "space";
+    if (isSpace && spacePanningActive) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const current = tools.getActive();
+      if (current === "hand" && toolBeforeSpace && toolBeforeSpace !== "hand") {
+        setActiveTool(toolBeforeSpace);
+      }
+      toolBeforeSpace = null;
+      spacePanningActive = false;
+    }
   }
 
   window.addEventListener("keydown", onKeyDown, { passive: false });

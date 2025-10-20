@@ -4,18 +4,18 @@ import { store } from "../modules/core/store.js";
 import { getShortcutMap } from "./shortcuts.js";
 
 const TOOL_DESCRIPTORS = [
-  { id: "move", label: "Move (V)", icon: "↔", key: "v" },
-  { id: "select", label: "Marquee (M)", icon: "□", key: "m", meta: { mode: "rect" } },
-  { id: "select-lasso", label: "Lasso (L)", icon: "∿", key: "l", meta: { mode: "lasso" } },
-  { id: "crop", label: "Crop (C)", icon: "✂", key: "c" },
-  { id: "brush", label: "Brush (B)", icon: "✎", key: "b" },
-  { id: "eraser", label: "Eraser (E)", icon: "⨂", key: "e" },
-  { id: "fill", label: "Fill (G)", icon: "◼", key: "g" },
-  { id: "text", label: "Text (T)", icon: "T", key: "t" },
-  { id: "shape", label: "Shape (U)", icon: "⬚", key: "u" },
-  { id: "eyedropper", label: "Eyedropper (I)", icon: "⦿", key: "i" },
-  { id: "hand", label: "Hand (H)", icon: "✋", key: "h" },
-  { id: "zoom", label: "Zoom (Z)", icon: "🔍", key: "z" },
+  { id: "move", label: "Move (V)", icon: "assets/icons/tool-move.svg", key: "v" },
+  { id: "select", label: "Marquee (M)", icon: "assets/icons/tool-marquee.svg", key: "m", meta: { mode: "rect" } },
+  { id: "select-lasso", label: "Lasso (L)", icon: "assets/icons/tool-lasso.svg", key: "l", meta: { mode: "lasso" } },
+  { id: "crop", label: "Crop (C)", icon: "assets/icons/tool-crop.svg", key: "c" },
+  { id: "brush", label: "Brush (B)", icon: "assets/icons/tool-brush.svg", key: "b" },
+  { id: "eraser", label: "Eraser (E)", icon: "assets/icons/tool-eraser.svg", key: "e" },
+  { id: "fill", label: "Fill (G)", icon: "assets/icons/tool-fill.svg", key: "g" },
+  { id: "text", label: "Text (T)", icon: "assets/icons/tool-text.svg", key: "t" },
+  { id: "shape", label: "Shape (U)", icon: "assets/icons/tool-shape.svg", key: "u" },
+  { id: "eyedropper", label: "Eyedropper (I)", icon: "assets/icons/tool-eyedropper.svg", key: "i" },
+  { id: "hand", label: "Hand (H)", icon: "assets/icons/tool-hand.svg", key: "h" },
+  { id: "zoom", label: "Zoom (Z)", icon: "assets/icons/tool-zoom.svg", key: "z" },
 ];
 
 function resolveToolId(id) {
@@ -40,26 +40,74 @@ function renderButton(desc, active) {
   btn.setAttribute("data-tool", desc.id);
   btn.setAttribute("title", desc.label);
   btn.setAttribute("data-tip", desc.label);
+  btn.setAttribute("aria-label", desc.label);
   btn.setAttribute("aria-pressed", String(Boolean(active)));
+
+  const map = getShortcutMap();
+  const keyEntry = Object.entries(map).find(([, v]) => (v || "").toLowerCase() === (desc.key || "").toLowerCase());
+  const hint = keyEntry ? keyEntry[0] : desc.key;
+  if (hint) {
+    btn.setAttribute("aria-keyshortcuts", String(hint).toUpperCase());
+  }
+
   const span = document.createElement("span");
   span.className = "tool-btn__icon";
   span.setAttribute("aria-hidden", "true");
-  span.textContent = desc.icon;
+  // Use CSS mask so icon adopts currentColor for hover/active states
+  span.style.width = "20px";
+  span.style.height = "20px";
+  span.style.display = "inline-block";
+  span.style.backgroundColor = "currentColor";
+  span.style.maskImage = `url(${desc.icon})`;
+  span.style.webkitMaskImage = `url(${desc.icon})`;
+  span.style.maskRepeat = "no-repeat";
+  span.style.webkitMaskRepeat = "no-repeat";
+  span.style.maskPosition = "center";
+  span.style.webkitMaskPosition = "center";
+  span.style.maskSize = "contain";
+  span.style.webkitMaskSize = "contain";
   btn.appendChild(span);
-  const map = getShortcutMap();
-  const key = Object.entries(map).find(([, v]) => (v || "").toLowerCase() === (desc.key || "").toLowerCase());
-  const hint = key ? key[0] : desc.key;
+
   if (hint) {
     const kbd = document.createElement("kbd");
     kbd.className = "tool-kbd";
     kbd.textContent = String(hint).toUpperCase();
     btn.appendChild(kbd);
   }
+
   btn.addEventListener("click", () => {
     const targetId = resolveToolId(desc.id);
     tools.setActive(targetId, { source: "palette" });
     applyToolMeta(targetId, desc.meta);
   });
+
+  // Placeholder for future subtool flyouts: right-click or long-press
+  const showSubtools = (ev) => {
+    try { ev.preventDefault(); } catch (_) {}
+    const pop = document.createElement("div");
+    pop.className = "tool-subtools-popover";
+    pop.setAttribute("role", "menu");
+    pop.setAttribute("aria-label", `${desc.label} subtools`);
+    pop.textContent = "Subtools coming soon";
+    document.body.appendChild(pop);
+    const rect = btn.getBoundingClientRect();
+    pop.style.position = "fixed";
+    pop.style.top = `${Math.round(rect.top)}px`;
+    pop.style.left = `${Math.round(rect.right + 8)}px`;
+    const cleanup = () => { try { document.body.removeChild(pop); } catch (_) {} window.removeEventListener("pointerdown", cleanup, { capture: true }); };
+    window.addEventListener("pointerdown", cleanup, { capture: true, once: true });
+    setTimeout(cleanup, 1200);
+  };
+  btn.addEventListener("contextmenu", showSubtools);
+
+  let longPressTimer = null;
+  btn.addEventListener("pointerdown", () => {
+    clearTimeout(longPressTimer);
+    longPressTimer = setTimeout(() => showSubtools(new Event("custom")), 550);
+  });
+  const clearLp = () => { clearTimeout(longPressTimer); };
+  ["pointerup", "pointerleave", "pointercancel", "dragstart"].forEach((t) => btn.addEventListener(t, clearLp));
+
   return btn;
 }
 
@@ -71,7 +119,15 @@ export function initToolPalette(scope = document) {
     container = document.createElement("div");
     container.className = "tool-palette";
     container.setAttribute("data-tool-palette", "");
+    container.setAttribute("role", "toolbar");
+    container.setAttribute("aria-orientation", "vertical");
+    container.setAttribute("aria-label", "Tools");
     stage.appendChild(container);
+  } else {
+    // Ensure ARIA roles are present if palette already exists
+    container.setAttribute("role", "toolbar");
+    container.setAttribute("aria-orientation", "vertical");
+    container.setAttribute("aria-label", "Tools");
   }
   const active = store.getState().tools?.active || "pointer";
   container.innerHTML = "";
