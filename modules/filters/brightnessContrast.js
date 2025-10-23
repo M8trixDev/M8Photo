@@ -1,6 +1,8 @@
 // Brightness/Contrast filter implementation
 // Options: { brightness: -100..100, contrast: -100..100 }
 
+import { tryApplyGL } from "../gl/index.js";
+
 export function applyToImageData(imageData, options = {}) {
   if (!imageData || !imageData.data) return imageData;
   const { brightness = 0, contrast = 0 } = options;
@@ -34,6 +36,14 @@ export function applyToImageData(imageData, options = {}) {
 
 export function applyToCanvas(sourceCanvas, options = {}) {
   if (!sourceCanvas) return null;
+  
+  // Try WebGL path first
+  const glResult = tryApplyGL(sourceCanvas, "brightnessContrast", options);
+  if (glResult) {
+    return glResult;
+  }
+  
+  // Fall back to Canvas2D
   const w = sourceCanvas.width | 0;
   const h = sourceCanvas.height | 0;
   const canvas = document.createElement("canvas");

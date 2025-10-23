@@ -1,6 +1,8 @@
 // Saturation and Hue adjustment filter
 // Options: { saturation: -100..100, hue: -180..180 }
 
+import { tryApplyGL } from "../gl/index.js";
+
 function rgbToHsl(r, g, b) {
   r /= 255; g /= 255; b /= 255;
   const max = Math.max(r, g, b), min = Math.min(r, g, b);
@@ -74,6 +76,12 @@ export function applyToImageData(imageData, options = {}) {
 
 export function applyToCanvas(sourceCanvas, options = {}) {
   if (!sourceCanvas) return null;
+
+  const glResult = tryApplyGL(sourceCanvas, "saturationHue", options);
+  if (glResult) {
+    return glResult;
+  }
+
   const w = sourceCanvas.width | 0;
   const h = sourceCanvas.height | 0;
   const canvas = document.createElement("canvas");

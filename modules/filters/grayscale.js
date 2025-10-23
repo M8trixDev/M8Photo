@@ -35,11 +35,8 @@ export function applyToImageData(imageData, options = {}) {
 export function applyToCanvas(sourceCanvas, options = {}) {
   if (!sourceCanvas) return null;
 
-  // Use WebGL path for full grayscale when available
-  if (options.amount == null || Number(options.amount) >= 100) {
-    const glResult = tryApplyGL(sourceCanvas, 'grayscale', options);
-    if (glResult) return glResult;
-  }
+  const glResult = tryApplyGL(sourceCanvas, 'grayscale', options);
+  if (glResult) return glResult;
 
   const w = sourceCanvas.width | 0;
   const h = sourceCanvas.height | 0;

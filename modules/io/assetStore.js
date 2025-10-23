@@ -39,6 +39,16 @@ export function getInfo(assetId) {
   return entry ? { ...entry, canvas: undefined } : null;
 }
 
+export function updateCanvas(assetId, canvas) {
+  const entry = assets.get(assetId);
+  if (!entry) return false;
+
+  entry.canvas = canvas;
+  entry.width = Number(canvas.width) || 0;
+  entry.height = Number(canvas.height) || 0;
+  return true;
+}
+
 export function remove(assetId) {
   assets.delete(assetId);
 }

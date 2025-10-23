@@ -1,6 +1,8 @@
 // Separable Gaussian Blur filter
 // Options: { radius: number } where radius ~ 0..50. Internally uses sigma = Math.max(0.1, radius/3)
 
+import { tryApplyGL } from "../gl/index.js";
+
 function buildKernelFromRadius(radius) {
   const r = Math.max(0, Math.floor(radius));
   if (r <= 0) return new Float32Array([1]);
@@ -91,6 +93,12 @@ export function applyToImageData(imageData, options = {}) {
 
 export function applyToCanvas(sourceCanvas, options = {}) {
   if (!sourceCanvas) return null;
+
+  const glResult = tryApplyGL(sourceCanvas, "blur", options);
+  if (glResult) {
+    return glResult;
+  }
+
   const w = sourceCanvas.width | 0;
   const h = sourceCanvas.height | 0;
   const canvas = document.createElement("canvas");
