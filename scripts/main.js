@@ -356,6 +356,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   } catch (error) {
     console.warn("[M8Photo] Proceeding without restored workspace state", error);
   }
+  try {
+    const params = new URLSearchParams(location.search || "");
+    const flag = params.get("debugPerf") || params.get("perf");
+    if (flag && ["1", "true", "yes", "on"].includes(String(flag).toLowerCase())) {
+      globalScope.__M8PHOTO_DEBUG_PERF__ = true;
+      try { console.info("[M8Photo] Performance logging enabled"); } catch (_) {}
+    }
+  } catch (_) {}
   bootAppShell();
   registerServiceWorker();
 });
