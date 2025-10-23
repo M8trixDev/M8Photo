@@ -17,15 +17,18 @@
   grid-column: 1 / 2;
   grid-row: 1 / 2;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   align-items: start;
-  justify-items: stretch;
+  justify-items: center;
   gap: var(--space-sm, 0.5rem);
   padding: clamp(0.5rem, 1.2vw, 0.85rem) 0.45rem;
   background: var(--color-surface);
   border-right: 1px solid var(--color-border);
   position: relative;
   z-index: 60;
+  min-width: var(--left-toolbar-width, 68px);
+  max-width: var(--left-toolbar-width, 68px);
 }
 
 .app-main {
@@ -45,19 +48,6 @@
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.toolbar {
-  display: flex;
-  align-items: center;
-  padding: 0.75rem 1.5rem;
-  gap: 1.25rem;
-  background: var(--color-surface-raised);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--color-border);
 }
 
 .app-main {

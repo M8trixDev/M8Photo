@@ -256,12 +256,12 @@ export function initKeyboardShortcuts() {
       const action = resolveActionFromKey(lower);
       if (action) {
         if (action.startsWith('tool.')) {
-          const id = action.split('.')[1];
           if (action === 'tool.select.marquee' || action === 'tool.select.lasso') {
+            const mode = action.endsWith('lasso') ? 'lasso' : 'rect';
+            try { tools.updateOptions('select', { lassoMode: mode }, { source: 'keys' }); } catch(_){}
             setActiveTool('select');
-            // Store the last chosen lasso/marquee mode for downstream tools
-            try { tools.updateOptions('select', { lassoMode: action.endsWith('lasso') ? 'lasso' : 'rect' }, { source: 'keys' }); } catch(_){}
           } else {
+            const id = action.split('.')[1];
             setActiveTool(id);
           }
           return;
@@ -284,20 +284,26 @@ export function initKeyboardShortcuts() {
         setActiveTool("text");
         return;
       }
-      if (lower === "s") {
+      if (lower === "m") {
         setActiveTool("select");
+        try { tools.updateOptions('select', { lassoMode: 'rect' }, { source: 'keys' }); } catch(_){}
         return;
       }
-      if (lower === "f") {
+      if (lower === "l") {
+        setActiveTool("select");
+        try { tools.updateOptions('select', { lassoMode: 'lasso' }, { source: 'keys' }); } catch(_){}
+        return;
+      }
+      if (lower === "c") {
+        setActiveTool("crop");
+        return;
+      }
+      if (lower === "g") {
         setActiveTool("fill");
         return;
       }
       if (lower === "u") {
         setActiveTool("shape");
-        return;
-      }
-      if (lower === "c") {
-        setActiveTool("crop");
         return;
       }
       if (lower === "i") {
@@ -310,24 +316,6 @@ export function initKeyboardShortcuts() {
       }
       if (lower === "z") {
         setActiveTool("zoom");
-        return;
-      }
-      if (lower === "g") {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        try {
-          const vp = store.getState().viewport || {};
-          const visible = (vp.grid && vp.grid.visible !== false) ? true : false;
-          store.updateSlice(
-            "viewport",
-            (viewport) => ({
-              ...viewport,
-              grid: { ...(viewport.grid || {}), visible: !visible },
-            }),
-            { reason: "viewport:grid-toggle", source: "keys" }
-          );
-          if (eventBus) eventBus.emit("viewport:grid", { visible: !visible, source: "keys" });
-        } catch (_) {}
         return;
       }
       // Opacity shortcuts (0-9)
