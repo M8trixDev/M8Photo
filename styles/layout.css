@@ -6,16 +6,26 @@
 
 .app-root {
   display: grid;
-  grid-template-rows: auto 1fr;
-  grid-template-columns: minmax(0, 1fr) var(--sidebar-divider, 8px) var(--sidebar-width, 320px);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-columns: var(--left-toolbar-width, 68px) minmax(0, 1fr) var(--sidebar-divider, 10px) var(--sidebar-width, 320px);
   column-gap: 0;
   min-height: 100vh;
   backdrop-filter: blur(12px);
 }
 
 .toolbar {
-  grid-column: 1 / -1;
-  grid-row: 1;
+  grid-column: 1 / 2;
+  grid-row: 1 / 2;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  align-items: start;
+  justify-items: stretch;
+  gap: var(--space-sm, 0.5rem);
+  padding: clamp(0.5rem, 1.2vw, 0.85rem) 0.45rem;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  position: relative;
+  z-index: 60;
 }
 
 .app-main {
@@ -55,8 +65,8 @@
 }
 
 .workspace {
-  grid-column: 1 / 2;
-  grid-row: 2;
+  grid-column: 2 / 3;
+  grid-row: 1 / 2;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -67,8 +77,8 @@
 
 /* Sidebar resizer between workspace and panels */
 .sidebar-resizer {
-  grid-column: 2 / 3;
-  grid-row: 2;
+  grid-column: 3 / 4;
+  grid-row: 1 / 2;
   width: var(--sidebar-divider, 8px);
   cursor: col-resize;
   position: relative;
@@ -260,8 +270,8 @@
 }
 
 .panels {
-  grid-column: 3 / 4;
-  grid-row: 2;
+  grid-column: 4 / 5;
+  grid-row: 1 / 2;
   display: grid;
   grid-template-rows: auto 1fr;
   height: 100%;
@@ -312,26 +322,47 @@
 
 @media (max-width: 1080px) {
   .app-root {
-    grid-template-columns: 1fr;
+    grid-template-columns: var(--left-toolbar-width, 56px) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
   }
   .workspace {
-    grid-column: 1 / -1;
-  }
-  .panels {
-    grid-column: 1 / -1;
+    grid-column: 2 / 3;
+    grid-row: 1 / 2;
   }
   .sidebar-resizer {
     display: none;
   }
+  .panels {
+    grid-column: 2 / 3;
+    grid-row: 2 / 3;
+    min-height: clamp(240px, 35vh, 360px);
+  }
 }
 
 @media (max-width: 720px) {
-  .toolbar {
-    flex-wrap: wrap;
-    gap: 0.75rem;
+  .app-root {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
   }
-
+  .toolbar {
+    grid-column: 1 / -1;
+    grid-row: 1 / 2;
+    grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
+    grid-template-rows: auto;
+    grid-auto-flow: column;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+    padding: 0.5rem;
+  }
+  .workspace {
+    grid-column: 1 / -1;
+    grid-row: 2 / 3;
+  }
+  .panels {
+    grid-column: 1 / -1;
+    grid-row: 3 / 4;
+  }
   .workspace-stage {
-    min-height: 320px;
+    min-height: 300px;
   }
 }

@@ -19,12 +19,12 @@
   --transition-snappy: 160ms ease;
   --transition-gentle: 280ms ease;
   --font-system: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
-  /* Density/spacing tokens */
+  /* Density/spacing tokens - compact by default */
   --space-xxs: 2px;
   --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 12px;
-  --space-lg: 16px;
+  --space-sm: 6px;
+  --space-md: 10px;
+  --space-lg: 14px;
 }
 
 * {
@@ -41,7 +41,9 @@ body {
   background: var(--color-bg);
   color: var(--color-text-primary);
   font-family: var(--font-system);
-  line-height: 1.55;
+  font-size: 0.96rem;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
   -webkit-font-smoothing: antialiased;
 }
 
