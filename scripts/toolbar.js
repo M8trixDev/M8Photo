@@ -1,11 +1,11 @@
 import { openExportDialog } from "../modules/io/importExport.js";
-import { initMenuBar } from "../modules/ui/menu.js";
 import { openShortcutsEditor } from "./shortcutsEditor.js";
 
 const QUICK_ACTIONS = [
-  { label: "Export", icon: "⇣" },
-  { label: "Command", icon: "⌘K", command: "ui.commandPalette" },
-  { label: "Shortcuts", icon: "⌨", command: "ui.shortcuts" },
+  { label: "Export", icon: "⇣", title: "Export image" },
+  { label: "Command", icon: "⌘", command: "ui.commandPalette", title: "Open command palette" },
+  { label: "Shortcuts", icon: "⌨", command: "ui.shortcuts", title: "Edit shortcuts" },
+  { label: "Density", icon: "◻", togglesDensity: true, title: "Toggle compact density" },
 ];
 
 const DENSITY_KEY = "m8photo.ui.density";
@@ -17,21 +17,16 @@ export function initToolbar(scope = document) {
     return;
   }
 
+  // Left toolbar is now vertical tool palette only
   toolbarEl.innerHTML = `
     <div class="toolbar__branding" role="presentation">
-      <span class="toolbar__glyph" aria-hidden="true">M8</span>
-      <span class="toolbar__title">M8Photo</span>
+      <span class="toolbar__glyph" aria-hidden="true" title="M8Photo Studio">M8</span>
     </div>
-    <nav class="toolbar__menus" data-menubar aria-label="Primary menu"></nav>
-    <div class="toolbar__spacer" aria-hidden="true"></div>
-    <div class="toolbar__actions" role="group" aria-label="Quick actions">
+    <div class="toolbar__tools" data-tool-palette-host aria-label="Tools"></div>
+    <div class="toolbar__bottom">
       ${renderQuickActions()}
-      ${renderDensityToggle()}
     </div>
   `;
-
-  // Build the accessible menubar
-  initMenuBar(toolbarEl);
 
   // Apply persisted density mode
   applyDensity(getSavedDensity());
@@ -44,23 +39,15 @@ function renderQuickActions() {
     let commandAttr = "";
     if (action.label === "Export") commandAttr = ' data-command="io.export"';
     if (action.command) commandAttr = ` data-command="${action.command}"`;
+    if (action.togglesDensity) commandAttr = ' data-density-toggle';
+    const compact = getSavedDensity() === "compact";
+    const pressed = action.togglesDensity ? ` aria-pressed="${compact ? "true" : "false"}"` : '';
     return `
-      <button class="toolbar__action" type="button"${commandAttr}>
+      <button class="toolbar__action" type="button"${commandAttr}${pressed} title="${action.title || action.label}" aria-label="${action.label}">
         <span class="toolbar__action-icon" aria-hidden="true">${action.icon}</span>
-        <span class="toolbar__action-label">${action.label}</span>
       </button>
     `;
   }).join("");
-}
-
-function renderDensityToggle() {
-  const compact = getSavedDensity() === "compact";
-  return `
-    <button class="toolbar__action" type="button" data-density-toggle aria-pressed="${compact ? "true" : "false"}" title="Toggle compact density">
-      <span class="toolbar__action-icon" aria-hidden="true">▣</span>
-      <span class="toolbar__action-label">${compact ? "Compact" : "Comfort"}</span>
-    </button>
-  `;
 }
 
 function getSavedDensity() {
@@ -103,8 +90,9 @@ function bindToolbarInteractions(toolbarEl) {
       try { localStorage.setItem(DENSITY_KEY, next); } catch (_) {}
       applyDensity(next);
       densityBtn.setAttribute("aria-pressed", String(next === "compact"));
-      const label = densityBtn.querySelector(".toolbar__action-label");
-      if (label) label.textContent = next === "compact" ? "Compact" : "Comfort";
+      const title = next === "compact" ? "Toggle compact density" : "Toggle comfort density";
+      densityBtn.setAttribute("title", title);
+      densityBtn.setAttribute("aria-label", next === "compact" ? "Compact density" : "Comfort density");
     });
   }
 

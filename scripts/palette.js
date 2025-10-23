@@ -112,9 +112,9 @@ function renderButton(desc, active) {
 }
 
 export function initToolPalette(scope = document) {
-  const stage = scope.querySelector("[data-viewport-stage]");
-  if (!stage) return;
-  let container = stage.querySelector("[data-tool-palette]");
+  const host = scope.querySelector("[data-tool-palette-host]");
+  if (!host) return;
+  let container = host.querySelector("[data-tool-palette]");
   if (!container) {
     container = document.createElement("div");
     container.className = "tool-palette";
@@ -122,7 +122,7 @@ export function initToolPalette(scope = document) {
     container.setAttribute("role", "toolbar");
     container.setAttribute("aria-orientation", "vertical");
     container.setAttribute("aria-label", "Tools");
-    stage.appendChild(container);
+    host.appendChild(container);
   } else {
     // Ensure ARIA roles are present if palette already exists
     container.setAttribute("role", "toolbar");
