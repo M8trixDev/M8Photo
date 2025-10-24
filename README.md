@@ -20,6 +20,10 @@ The app runs entirely in the browser using modern web platform APIs. No build st
 
 ## What's new in v0.2.0
 
+**See [CHANGELOG.md](CHANGELOG.md) for detailed release notes.**
+
+### Highlights
+
 - Compact density mode across UI (default), with canvas filling the viewport beside a resizable right sidebar
 - Left vertical tool palette with tooltips, active highlight, and full keyboard shortcuts
 - Command palette (Ctrl/Cmd+K) and a shortcuts editor with conflict detection and persistence
