@@ -3,6 +3,8 @@ import { eventBus } from "./events.js";
 import { createLayerManager } from "../layers/layerManager.js";
 import { resolveBlendMode } from "../layers/blendModes.js";
 import { getCanvas as getAssetCanvas } from "../io/assetStore.js";
+import { applyAdjustmentToCanvas } from "../layers/adjustmentLayers.js";
+import { applyMaskToCanvas } from "../layers/maskManager.js";
 
 const DEFAULT_CANVAS_OPTIONS = Object.freeze({
   backgroundColor: "#0f121a",
