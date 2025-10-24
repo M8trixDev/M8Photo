@@ -1,6 +1,11 @@
-const CACHE_NAME = "m8studio-shell-v0.2.1";
+const CACHE_PREFIX = "m8studio-shell";
+const CACHE_VERSION = "0.2.0";
+const CACHE_NAME = `${CACHE_PREFIX}-v${CACHE_VERSION}`;
 const OFFLINE_DOCUMENT = "offline.html";
 const OFFLINE_IMAGE = "assets/icons/icon-192.png";
+
+self.__M8_CACHE_VERSION__ = CACHE_VERSION;
+self.__M8_CACHE_NAME__ = CACHE_NAME;
 
 const SHELL_ASSETS = [
   "index.html",
@@ -99,15 +104,26 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("message", (event) => {
   const data = event.data;
   if (!data || typeof data !== "object") return;
+
   if (data.type === "SKIP_WAITING") {
     self.skipWaiting();
+    return;
   }
+
   if (data.type === "CLEAR_OLD_CACHES") {
     event.waitUntil(
       caches
         .keys()
         .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
     );
+    return;
+  }
+
+  if (data.type === "GET_VERSION") {
+    const source = event.source;
+    if (source && typeof source.postMessage === "function") {
+      source.postMessage({ type: "VERSION", version: CACHE_VERSION, cacheName: CACHE_NAME });
+    }
   }
 });
 
@@ -138,14 +154,14 @@ async function handleNavigationRequest(request) {
     if (response && response.ok) {
       const cache = await caches.open(CACHE_NAME);
       const copy = response.clone();
-      cache.put(request, copy);
+      await cache.put(request, copy);
 
-const { pathname } = new URL(request.url);
-if (pathname.endsWith("/") || pathname.endsWith("/index.html")) {
-  const indexUrl = new URL("index.html", self.registration.scope);
-  cache.put(indexUrl.toString(), response.clone());
-}
-
+      const { pathname } = new URL(request.url);
+      if (pathname.endsWith("/") || pathname.endsWith("/index.html")) {
+        const indexUrl = new URL("index.html", self.registration.scope);
+        await cache.put(indexUrl.toString(), response.clone());
+      }
+    }
 
     return response;
   } catch (error) {

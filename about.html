@@ -31,27 +31,90 @@
         <div class="kv"><div class="muted">Device Pixel Ratio</div><div id="dpr"></div></div>
         <div class="kv"><div class="muted">FPS (approx.)</div><div id="fps"></div></div>
         <div class="kv"><div class="muted">Service Worker</div><div id="sw"></div></div>
+        <div class="kv"><div class="muted">Cache Version</div><div id="cacheVersion"></div></div>
+        <div class="kv"><div class="muted">App Version</div><div id="appVersion"></div></div>
       </section>
     </main>
     <script type="module">
-      import { isWebGLAvailable } from './modules/gl/index.js';
-      const $ = (id)=> document.getElementById(id);
-      $('ua').textContent = navigator.userAgent;
-      $('plat').textContent = navigator.platform || 'unknown';
-      $('dpr').textContent = String(window.devicePixelRatio || 1);
-      $('webgl').textContent = isWebGLAvailable() ? 'Available' : 'Unavailable';
-      // Canvas support
-      try { const c = document.createElement('canvas'); const ok = !!(c.getContext && c.getContext('2d')); $('canvas').textContent = ok ? 'Canvas2D OK' : 'Unavailable'; } catch(_) { $('canvas').textContent = 'Unavailable'; }
-      // FPS sampler
-      (function(){
-        const span = $('fps'); let frames = 0; let last = performance.now();
-        function tick(){ frames += 1; const now = performance.now(); if (now - last > 1000){ const fps = Math.round(frames * 1000 / (now - last)); span.textContent = `${fps} fps`; frames = 0; last = now; } requestAnimationFrame(tick); }
+      import { isWebGLAvailable } from "./modules/gl/index.js";
+
+      const $ = (id) => document.getElementById(id);
+
+      $("ua").textContent = navigator.userAgent;
+      $("plat").textContent = navigator.platform || "unknown";
+      $("dpr").textContent = String(window.devicePixelRatio || 1);
+      $("webgl").textContent = isWebGLAvailable() ? "Available" : "Unavailable";
+
+      try {
+        const canvas = document.createElement("canvas");
+        const ok = Boolean(canvas.getContext && canvas.getContext("2d"));
+        $("canvas").textContent = ok ? "Canvas2D OK" : "Unavailable";
+      } catch (_) {
+        $("canvas").textContent = "Unavailable";
+      }
+
+      (function () {
+        const span = $("fps");
+        let frames = 0;
+        let last = performance.now();
+        function tick() {
+          frames += 1;
+          const now = performance.now();
+          if (now - last > 1000) {
+            const fps = Math.round((frames * 1000) / (now - last));
+            span.textContent = `${fps} fps`;
+            frames = 0;
+            last = now;
+          }
+          requestAnimationFrame(tick);
+        }
         requestAnimationFrame(tick);
       })();
-      // SW
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistration().then(reg => { $('sw').textContent = reg ? (reg.active ? 'Active' : 'Registered') : 'Not registered'; }).catch(()=>{ $('sw').textContent = 'Not registered'; });
-      } else { $('sw').textContent = 'Not supported'; }
+
+      const swStatusEl = $("sw");
+      const cacheVersionEl = $("cacheVersion");
+      const appVersionEl = $("appVersion");
+
+      swStatusEl.textContent = "Detecting…";
+      cacheVersionEl.textContent = "—";
+      appVersionEl.textContent = "—";
+
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker
+          .getRegistration()
+          .then((reg) => {
+            swStatusEl.textContent = reg ? (reg.active ? "Active" : "Registered") : "Not registered";
+          })
+          .catch(() => {
+            swStatusEl.textContent = "Not registered";
+          });
+
+        fetch("manifest.json")
+          .then((response) => (response.ok ? response.json() : null))
+          .then((manifest) => {
+            if (manifest?.version) {
+              appVersionEl.textContent = manifest.version;
+            }
+          })
+          .catch(() => {});
+
+        const controller = navigator.serviceWorker.controller;
+        if (controller) {
+          const handleMessage = (event) => {
+            if (event.data && event.data.type === "VERSION") {
+              cacheVersionEl.textContent = event.data.version || "Unknown";
+              navigator.serviceWorker.removeEventListener("message", handleMessage);
+            }
+          };
+          navigator.serviceWorker.addEventListener("message", handleMessage);
+          controller.postMessage({ type: "GET_VERSION" });
+        } else {
+          cacheVersionEl.textContent = "N/A";
+        }
+      } else {
+        swStatusEl.textContent = "Not supported";
+        cacheVersionEl.textContent = "N/A";
+      }
     </script>
   </body>
 </html>
